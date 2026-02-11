@@ -1,7 +1,7 @@
 {
 	"name": "Flow-plugin",
 	"description": "Sketch plugin for Flow design handoff – publish designs with full prototype flows for developer inspection",
-	"version": "2.4.0",
+	"version": "2.4.1",
 	"engines": {
 		"sketch": ">=53.0"
 	},
