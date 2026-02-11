@@ -4,5 +4,8 @@
     <item>
       <enclosure url="https://github.com/heshamCO/flow-plugin/releases/download/v2.4.0/Flow.sketchplugin.zip" sparkle:version="2.4.0"/>
     </item>
+    <item>
+      <enclosure url="https://github.com/heshamCO/flow-plugin/releases/download/v2.4.0/Flow.sketchplugin.zip" sparkle:version="2.4.0"/>
+    </item>
   </channel>
 </rss>
