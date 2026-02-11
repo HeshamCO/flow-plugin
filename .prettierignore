@@ -1,0 +1,6 @@
+node_modules
+Flow.sketchplugin
+resources/webview.html
+resources/webview.old.html
+*.sketch
+dist

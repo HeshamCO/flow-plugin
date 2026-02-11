@@ -1,0 +1,28 @@
+{
+	"extends": "@tsconfig/svelte/tsconfig.json",
+	"compilerOptions": {
+		"target": "ES2020",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"strict": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+		"noEmit": true,
+		"lib": ["ES2020", "DOM", "DOM.Iterable"],
+		"paths": {
+			"$lib/*": ["../../../flow-plugin/src/webview/lib/*"],
+			"$components/*": ["../../../flow-plugin/src/webview/components/*"],
+			"$views/*": ["../../../flow-plugin/src/webview/views/*"],
+			"$stores/*": ["../../../flow-plugin/src/webview/stores/*"]
+		},
+		"baseUrl": "../../../flow-plugin/src/webview"
+	},
+	"include": [
+		"../../../flow-plugin/src/webview/**/*.ts",
+		"../../../flow-plugin/src/webview/**/*.svelte"
+	],
+	"exclude": ["../../../flow-plugin/src/webview/node_modules"]
+}

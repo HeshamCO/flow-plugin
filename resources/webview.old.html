@@ -1,0 +1,1725 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Flow</title>
+		<style>
+			/* ─── Reset & Base ──────────────────────────────────────────────── */
+			*,
+			*::before,
+			*::after {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+
+			:root {
+				--primary: #2563eb;
+				--primary-hover: #1d4ed8;
+				--primary-light: #dbeafe;
+				--bg: #ffffff;
+				--surface: #f8fafc;
+				--surface-hover: #f1f5f9;
+				--text: #0f172a;
+				--text-secondary: #64748b;
+				--text-muted: #94a3b8;
+				--border: #e2e8f0;
+				--success: #10b981;
+				--success-light: #d1fae5;
+				--error: #ef4444;
+				--error-light: #fee2e2;
+				--warning: #f59e0b;
+				--radius: 8px;
+				--radius-lg: 12px;
+				--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+				--shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+				--transition: 150ms ease;
+				--font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+			}
+
+			html,
+			body {
+				font-family: var(--font);
+				font-size: 13px;
+				line-height: 1.5;
+				color: var(--text);
+				background: var(--bg);
+				height: 100%;
+				overflow: hidden;
+				-webkit-font-smoothing: antialiased;
+			}
+
+			/* ─── Layout ────────────────────────────────────────────────────── */
+			#app {
+				display: flex;
+				flex-direction: column;
+				height: 100%;
+			}
+
+			.header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 12px 16px;
+				border-bottom: 1px solid var(--border);
+				background: var(--surface);
+				flex-shrink: 0;
+				-webkit-app-region: drag;
+			}
+
+			.header-title {
+				font-size: 15px;
+				font-weight: 700;
+				letter-spacing: -0.3px;
+				color: var(--text);
+				display: flex;
+				align-items: center;
+				gap: 6px;
+			}
+
+			.header-title svg {
+				width: 20px;
+				height: 20px;
+			}
+
+			.header-actions {
+				display: flex;
+				align-items: center;
+				gap: 4px;
+				-webkit-app-region: no-drag;
+			}
+
+			.content {
+				flex: 1;
+				overflow-y: auto;
+				padding: 16px;
+			}
+
+			.footer {
+				flex-shrink: 0;
+				padding: 12px 16px;
+				border-top: 1px solid var(--border);
+				background: var(--surface);
+			}
+
+			/* ─── Views ─────────────────────────────────────────────────────── */
+			.view {
+				display: none;
+			}
+			.view.active {
+				display: block;
+			}
+
+			/* ─── Forms ─────────────────────────────────────────────────────── */
+			.form-group {
+				margin-bottom: 14px;
+			}
+
+			.form-label {
+				display: block;
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--text-secondary);
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+				margin-bottom: 4px;
+			}
+
+			.form-input {
+				width: 100%;
+				padding: 8px 10px;
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				font-size: 13px;
+				font-family: var(--font);
+				color: var(--text);
+				background: var(--bg);
+				transition: border-color var(--transition);
+				outline: none;
+			}
+
+			.form-input:focus {
+				border-color: var(--primary);
+				box-shadow: 0 0 0 3px var(--primary-light);
+			}
+
+			.form-input::placeholder {
+				color: var(--text-muted);
+			}
+
+			.form-hint {
+				font-size: 11px;
+				color: var(--text-muted);
+				margin-top: 3px;
+			}
+
+			/* ─── Buttons ───────────────────────────────────────────────────── */
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				padding: 8px 16px;
+				border: 1px solid transparent;
+				border-radius: var(--radius);
+				font-size: 13px;
+				font-weight: 600;
+				font-family: var(--font);
+				cursor: pointer;
+				transition: all var(--transition);
+				outline: none;
+				text-decoration: none;
+				white-space: nowrap;
+			}
+
+			.btn:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+			}
+
+			.btn-primary {
+				background: var(--primary);
+				color: #fff;
+			}
+			.btn-primary:hover:not(:disabled) {
+				background: var(--primary-hover);
+			}
+
+			.btn-secondary {
+				background: var(--surface);
+				color: var(--text);
+				border-color: var(--border);
+			}
+			.btn-secondary:hover:not(:disabled) {
+				background: var(--surface-hover);
+			}
+
+			.btn-ghost {
+				background: transparent;
+				color: var(--text-secondary);
+				padding: 6px 8px;
+			}
+			.btn-ghost:hover {
+				color: var(--text);
+				background: var(--surface-hover);
+			}
+
+			.btn-danger {
+				background: var(--error);
+				color: #fff;
+			}
+			.btn-danger:hover:not(:disabled) {
+				background: #dc2626;
+			}
+
+			.btn-block {
+				width: 100%;
+			}
+
+			.btn-sm {
+				padding: 5px 10px;
+				font-size: 12px;
+			}
+
+			.btn-icon {
+				width: 30px;
+				height: 30px;
+				padding: 0;
+				border-radius: 6px;
+			}
+
+			/* ─── Cards & Lists ─────────────────────────────────────────────── */
+			.card {
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+				padding: 14px;
+				background: var(--bg);
+				transition: border-color var(--transition);
+			}
+
+			.card-clickable {
+				cursor: pointer;
+			}
+			.card-clickable:hover {
+				border-color: var(--primary);
+			}
+			.card-clickable.selected {
+				border-color: var(--primary);
+				background: var(--primary-light);
+			}
+
+			.card + .card {
+				margin-top: 8px;
+			}
+
+			.card-title {
+				font-size: 14px;
+				font-weight: 600;
+				color: var(--text);
+			}
+
+			.card-meta {
+				font-size: 12px;
+				color: var(--text-secondary);
+				margin-top: 2px;
+			}
+
+			/* ─── Badges ────────────────────────────────────────────────────── */
+			.badge {
+				display: inline-block;
+				padding: 2px 8px;
+				border-radius: 99px;
+				font-size: 11px;
+				font-weight: 600;
+			}
+			.badge-blue {
+				background: var(--primary-light);
+				color: var(--primary);
+			}
+			.badge-green {
+				background: var(--success-light);
+				color: var(--success);
+			}
+			.badge-red {
+				background: var(--error-light);
+				color: var(--error);
+			}
+
+			/* ─── Progress ──────────────────────────────────────────────────── */
+			.progress-bar {
+				width: 100%;
+				height: 6px;
+				background: var(--surface);
+				border-radius: 99px;
+				overflow: hidden;
+				margin: 8px 0;
+			}
+
+			.progress-fill {
+				height: 100%;
+				background: var(--primary);
+				border-radius: 99px;
+				transition: width 300ms ease;
+				width: 0%;
+			}
+
+			/* ─── Alerts ────────────────────────────────────────────────────── */
+			.alert {
+				padding: 10px 12px;
+				border-radius: var(--radius);
+				font-size: 12px;
+				margin-bottom: 12px;
+				display: none;
+			}
+
+			.alert.show {
+				display: block;
+			}
+
+			.alert-error {
+				background: var(--error-light);
+				color: #991b1b;
+			}
+			.alert-success {
+				background: var(--success-light);
+				color: #065f46;
+			}
+			.alert-warning {
+				background: #fef3c7;
+				color: #92400e;
+			}
+
+			/* ─── Separators / Spacing ──────────────────────────────────────── */
+			.divider {
+				height: 1px;
+				background: var(--border);
+				margin: 16px 0;
+			}
+
+			.mt-2 {
+				margin-top: 8px;
+			}
+			.mt-3 {
+				margin-top: 12px;
+			}
+			.mt-4 {
+				margin-top: 16px;
+			}
+			.mb-2 {
+				margin-bottom: 8px;
+			}
+			.mb-3 {
+				margin-bottom: 12px;
+			}
+
+			.text-center {
+				text-align: center;
+			}
+			.text-secondary {
+				color: var(--text-secondary);
+			}
+			.text-sm {
+				font-size: 12px;
+			}
+			.text-xs {
+				font-size: 11px;
+			}
+
+			.flex {
+				display: flex;
+			}
+			.flex-col {
+				flex-direction: column;
+			}
+			.items-center {
+				align-items: center;
+			}
+			.justify-between {
+				justify-content: space-between;
+			}
+			.gap-2 {
+				gap: 8px;
+			}
+			.gap-3 {
+				gap: 12px;
+			}
+
+			/* ─── Checkbox List ─────────────────────────────────────────────── */
+			.check-item {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				padding: 6px 0;
+				font-size: 13px;
+			}
+
+			.check-item input[type='checkbox'] {
+				width: 16px;
+				height: 16px;
+				accent-color: var(--primary);
+				flex-shrink: 0;
+			}
+
+			.check-group {
+				margin-left: 24px;
+			}
+			.check-group-header {
+				font-weight: 600;
+				color: var(--text);
+				padding: 8px 0 4px;
+			}
+
+			/* ─── Section Title ─────────────────────────────────────────────── */
+			.section-title {
+				font-size: 12px;
+				font-weight: 600;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+				color: var(--text-muted);
+				margin-bottom: 8px;
+			}
+
+			/* ─── Empty State ───────────────────────────────────────────────── */
+			.empty-state {
+				text-align: center;
+				padding: 32px 16px;
+				color: var(--text-secondary);
+			}
+
+			.empty-state-icon {
+				font-size: 36px;
+				margin-bottom: 8px;
+				opacity: 0.4;
+			}
+
+			/* ─── Success Big ───────────────────────────────────────────────── */
+			.success-icon {
+				width: 64px;
+				height: 64px;
+				border-radius: 50%;
+				background: var(--success-light);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				margin: 0 auto 16px;
+				font-size: 32px;
+			}
+
+			/* ─── Stats row ─────────────────────────────────────────────────── */
+			.stats {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 8px;
+				margin: 16px 0;
+			}
+
+			.stat {
+				text-align: center;
+				padding: 10px;
+				background: var(--surface);
+				border-radius: var(--radius);
+			}
+
+			.stat-value {
+				font-size: 20px;
+				font-weight: 700;
+				color: var(--text);
+			}
+
+			.stat-label {
+				font-size: 11px;
+				color: var(--text-secondary);
+				margin-top: 2px;
+			}
+
+			/* ─── Loading state ─────────────────────────────────────────────── */
+			.loading-state {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 10px;
+				padding: 32px 16px;
+			}
+
+			/* ─── Loading spinner ───────────────────────────────────────────── */
+			.spinner {
+				width: 18px;
+				height: 18px;
+				border: 2px solid var(--border);
+				border-top-color: var(--primary);
+				border-radius: 50%;
+				animation: spin 600ms linear infinite;
+			}
+
+			@keyframes spin {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+
+			/* ─── Pulse animation for progress steps ───────────────────────── */
+			@keyframes pulse {
+				0%,
+				100% {
+					opacity: 1;
+				}
+				50% {
+					opacity: 0.5;
+				}
+			}
+			.pulse {
+				animation: pulse 2s ease-in-out infinite;
+			}
+
+			/* ─── Progress steps list ───────────────────────────────────────── */
+			.progress-steps {
+				list-style: none;
+				margin: 16px 0 0;
+				padding: 0;
+			}
+			.progress-step {
+				padding: 6px 0;
+				font-size: 12px;
+				color: var(--text-muted);
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				transition: color 200ms ease;
+			}
+			.progress-step.active {
+				color: var(--primary);
+				font-weight: 600;
+			}
+			.progress-step.done {
+				color: var(--success);
+			}
+			.progress-step-icon {
+				width: 18px;
+				height: 18px;
+				flex-shrink: 0;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.progress-step .step-spinner {
+				width: 14px;
+				height: 14px;
+				border: 2px solid var(--primary-light);
+				border-top-color: var(--primary);
+				border-radius: 50%;
+				animation: spin 600ms linear infinite;
+			}
+
+			/* ─── Elapsed timer ─────────────────────────────────────────────── */
+			.elapsed-timer {
+				font-size: 11px;
+				color: var(--text-muted);
+				text-align: center;
+				margin-top: 4px;
+			}
+
+			/* ─── Scrollbar ─────────────────────────────────────────────────── */
+			::-webkit-scrollbar {
+				width: 6px;
+			}
+			::-webkit-scrollbar-track {
+				background: transparent;
+			}
+			::-webkit-scrollbar-thumb {
+				background: var(--border);
+				border-radius: 99px;
+			}
+			::-webkit-scrollbar-thumb:hover {
+				background: var(--text-muted);
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app">
+			<!-- ─── Header ────────────────────────────────────────────── -->
+			<div class="header">
+				<div class="header-title">
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path d="M3 7l6-4 6 4 6-4v14l-6 4-6-4-6 4z" />
+						<path d="M9 3v14" />
+						<path d="M15 7v14" />
+					</svg>
+					Flow
+				</div>
+				<div class="header-actions">
+					<button class="btn btn-icon btn-ghost" onclick="showView('settings')" title="Settings">
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<circle cx="12" cy="12" r="3" />
+							<path
+								d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+							/>
+						</svg>
+					</button>
+				</div>
+			</div>
+
+			<!-- ─── Content ───────────────────────────────────────────── -->
+			<div class="content">
+				<!-- ── Connect View ──────────────────────────────────────── -->
+				<div id="view-connect" class="view active">
+					<div class="text-center mb-3">
+						<div style="font-size: 40px; margin-bottom: 8px">🌉</div>
+						<h2 style="font-size: 18px; font-weight: 700; margin-bottom: 4px">Welcome to Flow</h2>
+						<p class="text-secondary text-sm">Connect to your Flow server to start publishing designs.</p>
+					</div>
+
+					<div id="alert-connect" class="alert alert-error"></div>
+
+					<div class="form-group">
+						<label class="form-label">Server URL</label>
+						<input class="form-input" id="input-server-url" type="url" placeholder="http://localhost:4000" />
+						<p class="form-hint">The URL of your Flow server instance</p>
+					</div>
+
+					<div class="divider"></div>
+
+					<div id="auth-section">
+						<div class="flex justify-between items-center mb-2">
+							<span class="section-title" style="margin: 0">Account</span>
+							<button class="btn btn-ghost btn-sm" id="btn-toggle-auth" onclick="toggleAuthMode()">
+								Need an account? Register
+							</button>
+						</div>
+
+						<div class="form-group">
+							<label class="form-label">Email</label>
+							<input class="form-input" id="input-email" type="email" placeholder="you@company.com" />
+						</div>
+
+						<div class="form-group">
+							<label class="form-label">Password</label>
+							<input class="form-input" id="input-password" type="password" placeholder="••••••••" />
+						</div>
+
+						<div id="register-name" class="form-group" style="display: none">
+							<label class="form-label">Name (optional)</label>
+							<input class="form-input" id="input-name" type="text" placeholder="Your name" />
+						</div>
+
+						<button class="btn btn-primary btn-block" id="btn-auth" onclick="handleAuth()">Login</button>
+					</div>
+				</div>
+
+				<!-- ── Projects View ─────────────────────────────────────── -->
+				<div id="view-projects" class="view">
+					<div class="flex justify-between items-center mb-3">
+						<span class="section-title" style="margin: 0">Your Projects</span>
+						<button class="btn btn-primary btn-sm" onclick="showCreateProject()">+ New</button>
+					</div>
+
+					<div id="alert-projects" class="alert alert-error"></div>
+
+					<!-- Create project inline -->
+					<div id="create-project-form" class="card mb-3" style="display: none">
+						<div class="form-group" style="margin-bottom: 8px">
+							<input class="form-input" id="input-project-name" placeholder="Project name" />
+						</div>
+						<div class="form-group" style="margin-bottom: 8px">
+							<input class="form-input" id="input-project-desc" placeholder="Description (optional)" />
+						</div>
+						<div class="flex gap-2">
+							<button class="btn btn-primary btn-sm" onclick="createProject()">Create</button>
+							<button class="btn btn-secondary btn-sm" onclick="hideCreateProject()">Cancel</button>
+						</div>
+					</div>
+
+					<div id="projects-list"></div>
+					<div id="projects-empty" class="empty-state" style="display: none">
+						<div class="empty-state-icon">📁</div>
+						<p>No projects yet.</p>
+						<p class="text-sm text-secondary mt-2">Create your first project to start publishing designs.</p>
+					</div>
+					<div id="projects-loading" class="loading-state" style="display: none">
+						<div class="spinner" style="width: 24px; height: 24px; border-width: 2.5px"></div>
+						<span class="text-secondary text-sm">Loading projects…</span>
+					</div>
+				</div>
+
+				<!-- ── Publish View ──────────────────────────────────────── -->
+				<div id="view-publish" class="view">
+					<div class="flex items-center gap-2 mb-3">
+						<button class="btn btn-ghost btn-sm" onclick="showView('projects')" style="padding: 4px">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M19 12H5m7-7l-7 7 7 7" />
+							</svg>
+						</button>
+						<div>
+							<div class="section-title" style="margin: 0">Publish to</div>
+							<div id="publish-project-name" style="font-weight: 600; font-size: 14px"></div>
+						</div>
+					</div>
+
+					<div id="alert-publish" class="alert alert-error"></div>
+
+					<div id="publish-doc-info" class="card mb-3">
+						<div class="flex justify-between items-center">
+							<div>
+								<div class="card-title" id="publish-doc-name">—</div>
+								<div class="card-meta" id="publish-doc-meta">—</div>
+							</div>
+							<button class="btn btn-secondary btn-sm" onclick="refreshDocument()">
+								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M1 4v6h6" />
+									<path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+								</svg>
+								Refresh
+							</button>
+						</div>
+					</div>
+
+					<div id="publish-artboards"></div>
+
+					<div id="publish-options" class="mt-3">
+						<div class="check-item">
+							<input type="checkbox" id="opt-tokens" checked />
+							<label for="opt-tokens">Include design tokens (colors, text styles)</label>
+						</div>
+					</div>
+				</div>
+
+				<!-- ── Progress View ─────────────────────────────────────── -->
+				<div id="view-progress" class="view">
+					<div class="text-center mt-4">
+						<div class="spinner" style="margin: 0 auto 12px; width: 32px; height: 32px; border-width: 3px"></div>
+						<h3 style="font-size: 16px; font-weight: 600" id="progress-title">Publishing…</h3>
+						<p class="text-secondary text-sm mt-2" id="progress-detail">Preparing…</p>
+					</div>
+					<div class="progress-bar mt-3">
+						<div class="progress-fill" id="progress-fill"></div>
+					</div>
+					<div class="flex justify-between items-center mt-2">
+						<span class="text-xs text-secondary" id="progress-percent">0%</span>
+						<span class="text-xs text-secondary elapsed-timer" id="progress-elapsed"></span>
+					</div>
+					<ul class="progress-steps" id="progress-steps"></ul>
+					<p class="text-center text-xs text-muted pulse mt-3" id="progress-patience" style="display: none">
+						This may take a while for large documents — please don't close the window.
+					</p>
+				</div>
+
+				<!-- ── Success View ──────────────────────────────────────── -->
+				<div id="view-success" class="view">
+					<div class="text-center" style="padding-top: 24px">
+						<div class="success-icon">✓</div>
+						<h3 style="font-size: 18px; font-weight: 700">Published Successfully!</h3>
+						<p class="text-secondary text-sm mt-2" id="success-detail"></p>
+					</div>
+
+					<div class="stats" id="success-stats"></div>
+
+					<div class="mt-4 flex flex-col gap-2">
+						<button class="btn btn-primary btn-block" id="btn-open-web" onclick="openInBrowser()">
+							Open in Browser
+						</button>
+						<button class="btn btn-secondary btn-block" onclick="showView('projects')">Back to Projects</button>
+					</div>
+				</div>
+
+				<!-- ── Settings View ─────────────────────────────────────── -->
+				<div id="view-settings" class="view">
+					<div class="flex items-center gap-2 mb-3">
+						<button class="btn btn-ghost btn-sm" onclick="goBackFromSettings()" style="padding: 4px">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M19 12H5m7-7l-7 7 7 7" />
+							</svg>
+						</button>
+						<span class="section-title" style="margin: 0">Settings</span>
+					</div>
+
+					<div id="alert-settings" class="alert alert-success"></div>
+
+					<div class="form-group">
+						<label class="form-label">Server URL</label>
+						<input class="form-input" id="settings-server-url" type="url" placeholder="http://localhost:4000" />
+					</div>
+
+					<button class="btn btn-primary btn-block mb-3" onclick="saveSettings()">Save</button>
+
+					<div class="divider"></div>
+
+					<div id="settings-user-info" style="display: none">
+						<div class="section-title">Account</div>
+						<div class="card">
+							<div class="card-title" id="settings-user-email">—</div>
+							<div class="card-meta" id="settings-user-name">—</div>
+						</div>
+						<button class="btn btn-danger btn-sm btn-block mt-3" onclick="handleLogout()">Logout</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- ─── Footer (publish action) ───────────────────────────── -->
+			<div class="footer" id="footer-publish" style="display: none">
+				<button class="btn btn-primary btn-block" id="btn-publish" onclick="startPublish()">Publish</button>
+			</div>
+		</div>
+
+		<script>
+			// ════════════════════════════════════════════════════════════════════
+			//  State
+			// ════════════════════════════════════════════════════════════════════
+
+			const state = {
+				serverUrl: '',
+				authToken: '',
+				userEmail: '',
+				userName: '',
+				lastProjectId: '',
+				currentView: 'connect',
+				previousView: 'connect',
+				authMode: 'login', // login | register
+				projects: [],
+				selectedProjectId: null,
+				selectedProjectName: '',
+				documentData: null, // extracted from Sketch
+				publishVersionId: null, // current publish version
+				publishStats: { screens: 0, flows: 0, tokens: 0 },
+			};
+
+			// ════════════════════════════════════════════════════════════════════
+			//  Bridge: WebView ↔ Plugin Native
+			// ════════════════════════════════════════════════════════════════════
+
+			// Send message to plugin native side
+			function pluginCall(handler, data) {
+				try {
+					window.postMessage(handler, typeof data === 'string' ? data : JSON.stringify(data || ''));
+				} catch (e) {
+					console.error('pluginCall error:', e);
+				}
+			}
+
+			// Receive message from plugin native side
+			window.__onPluginMessage = function (msg) {
+				const { type, payload } = msg;
+				switch (type) {
+					case 'init':
+						handleInit(payload);
+						break;
+					case 'navigate':
+						showView(payload.view);
+						break;
+					case 'settings':
+					case 'settingsSaved':
+						Object.assign(state, {
+							serverUrl: payload.serverUrl || state.serverUrl,
+						});
+						break;
+					case 'authSaved':
+						state.userEmail = payload.email;
+						state.userName = payload.name;
+						break;
+					case 'loggedOut':
+						state.authToken = '';
+						state.userEmail = '';
+						state.userName = '';
+						showView('connect');
+						break;
+					case 'documentData':
+						handleDocumentData(payload);
+						break;
+					case 'extractError':
+						showAlert('publish', payload.message, 'error');
+						break;
+					case 'artboardImage':
+						handleArtboardImage(payload);
+						break;
+					case 'artboardImageError':
+						handleArtboardImageError(payload);
+						break;
+					case 'artboardData':
+						handleArtboardData(payload);
+						break;
+					case 'artboardDataError':
+						handleArtboardDataError(payload);
+						break;
+				}
+			};
+
+			// ════════════════════════════════════════════════════════════════════
+			//  Initialization
+			// ════════════════════════════════════════════════════════════════════
+
+			function handleInit(payload) {
+				const s = payload.settings || {};
+				state.serverUrl = s.serverUrl || '';
+				state.authToken = s.authToken || '';
+				state.userEmail = s.userEmail || '';
+				state.userName = s.userName || '';
+				state.lastProjectId = s.lastProjectId || '';
+
+				// Pre-fill fields
+				document.getElementById('input-server-url').value = state.serverUrl;
+				document.getElementById('settings-server-url').value = state.serverUrl;
+
+				if (state.serverUrl && state.authToken) {
+					// Already configured & authenticated → go to projects
+					// showView('projects') will call fetchProjects() automatically
+					showView(payload.initialView === 'settings' ? 'settings' : 'projects');
+					updateSettingsView();
+				} else if (state.serverUrl) {
+					// Server set but not logged in
+					document.getElementById('input-server-url').value = state.serverUrl;
+					showView(payload.initialView === 'settings' ? 'settings' : 'connect');
+				} else {
+					showView(payload.initialView === 'settings' ? 'settings' : 'connect');
+				}
+			}
+
+			// ════════════════════════════════════════════════════════════════════
+			//  View Management
+			// ════════════════════════════════════════════════════════════════════
+
+			function showView(name) {
+				state.previousView = state.currentView;
+				state.currentView = name;
+				document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
+				const el = document.getElementById('view-' + name);
+				if (el) el.classList.add('active');
+
+				// Footer visibility
+				document.getElementById('footer-publish').style.display = name === 'publish' ? 'block' : 'none';
+
+				// View-specific init
+				if (name === 'projects') fetchProjects();
+				if (name === 'publish') pluginCall('extractDocument');
+				if (name === 'settings') updateSettingsView();
+			}
+
+			function goBackFromSettings() {
+				if (state.serverUrl && state.authToken) {
+					showView('projects');
+				} else {
+					showView('connect');
+				}
+			}
+
+			// ════════════════════════════════════════════════════════════════════
+			//  Alerts
+			// ════════════════════════════════════════════════════════════════════
+
+			function showAlert(view, message, type) {
+				const el = document.getElementById('alert-' + view);
+				if (!el) return;
+				el.textContent = message;
+				el.className = 'alert alert-' + (type || 'error') + ' show';
+			}
+
+			function hideAlert(view) {
+				const el = document.getElementById('alert-' + view);
+				if (el) el.className = 'alert';
+			}
+
+			// ════════════════════════════════════════════════════════════════════
+			//  Auth (Connect view)
+			// ════════════════════════════════════════════════════════════════════
+
+			function toggleAuthMode() {
+				state.authMode = state.authMode === 'login' ? 'register' : 'login';
+				const btn = document.getElementById('btn-toggle-auth');
+				const authBtn = document.getElementById('btn-auth');
+				const nameField = document.getElementById('register-name');
+
+				if (state.authMode === 'register') {
+					btn.textContent = 'Already have an account? Login';
+					authBtn.textContent = 'Register';
+					nameField.style.display = 'block';
+				} else {
+					btn.textContent = 'Need an account? Register';
+					authBtn.textContent = 'Login';
+					nameField.style.display = 'none';
+				}
+			}
+
+			async function handleAuth() {
+				hideAlert('connect');
+				const serverUrl = document.getElementById('input-server-url').value.replace(/\/+$/, '');
+				const email = document.getElementById('input-email').value.trim();
+				const password = document.getElementById('input-password').value;
+				const name = document.getElementById('input-name').value.trim();
+
+				if (!serverUrl) return showAlert('connect', 'Please enter the server URL.');
+				if (!email || !password) return showAlert('connect', 'Please enter email and password.');
+				if (state.authMode === 'register' && password.length < 6) {
+					return showAlert('connect', 'Password must be at least 6 characters.');
+				}
+
+				const btn = document.getElementById('btn-auth');
+				btn.disabled = true;
+				btn.innerHTML = '<div class="spinner"></div>';
+
+				try {
+					// Test server connectivity
+					const endpoint = state.authMode === 'register' ? '/auth/register' : '/auth/login';
+					const body =
+						state.authMode === 'register' ? { email, password, name: name || undefined } : { email, password };
+
+					const res = await apiFetch(serverUrl + endpoint, {
+						method: 'POST',
+						body: JSON.stringify(body),
+					});
+
+					if (!res.ok) {
+						const err = await res.json().catch(() => ({}));
+						throw new Error(err.error || `Server returned ${res.status}`);
+					}
+
+					const data = await res.json();
+
+					// Save settings
+					state.serverUrl = serverUrl;
+					state.authToken = data.token;
+					state.userEmail = data.user.email;
+					state.userName = data.user.name || '';
+
+					pluginCall('saveServerUrl', serverUrl);
+					pluginCall(
+						'saveAuth',
+						JSON.stringify({
+							token: data.token,
+							email: data.user.email,
+							name: data.user.name || '',
+						}),
+					);
+
+					pluginCall(
+						'showMessage',
+						state.authMode === 'register' ? 'Account created! Welcome to Flow.' : 'Logged in successfully.',
+					);
+
+					showView('projects');
+				} catch (err) {
+					showAlert('connect', err.message || 'Could not connect to server.');
+				} finally {
+					btn.disabled = false;
+					btn.textContent = state.authMode === 'register' ? 'Register' : 'Login';
+				}
+			}
+
+			function handleLogout() {
+				pluginCall('logout');
+				state.authToken = '';
+				state.userEmail = '';
+				state.userName = '';
+				showView('connect');
+			}
+
+			// ════════════════════════════════════════════════════════════════════
+			//  Settings View
+			// ════════════════════════════════════════════════════════════════════
+
+			function updateSettingsView() {
+				document.getElementById('settings-server-url').value = state.serverUrl;
+				const userSection = document.getElementById('settings-user-info');
+				if (state.authToken) {
+					userSection.style.display = 'block';
+					document.getElementById('settings-user-email').textContent = state.userEmail;
+					document.getElementById('settings-user-name').textContent = state.userName || 'No name set';
+				} else {
+					userSection.style.display = 'none';
+				}
+			}
+
+			function saveSettings() {
+				const url = document.getElementById('settings-server-url').value.replace(/\/+$/, '');
+				if (!url) return showAlert('settings', 'Please enter a server URL.', 'error');
+				state.serverUrl = url;
+				pluginCall('saveServerUrl', url);
+				showAlert('settings', 'Settings saved.', 'success');
+				setTimeout(() => hideAlert('settings'), 2000);
+			}
+
+			// ════════════════════════════════════════════════════════════════════
+			//  Projects View
+			// ════════════════════════════════════════════════════════════════════
+
+			let _fetchProjectsId = 0; // dedup guard
+
+			async function fetchProjects() {
+				const list = document.getElementById('projects-list');
+				const empty = document.getElementById('projects-empty');
+				const loading = document.getElementById('projects-loading');
+
+				// Dedup: if another fetch is in-flight, skip
+				const fetchId = ++_fetchProjectsId;
+
+				list.innerHTML = '';
+				empty.style.display = 'none';
+				loading.style.display = 'flex';
+				hideAlert('projects');
+
+				try {
+					const res = await apiFetch(state.serverUrl + '/projects');
+					if (fetchId !== _fetchProjectsId) return; // stale response
+					if (!res.ok) throw new Error('Failed to load projects');
+
+					const data = await res.json();
+					state.projects = data.projects || [];
+					loading.style.display = 'none';
+
+					if (state.projects.length === 0) {
+						empty.style.display = 'block';
+						return;
+					}
+
+					state.projects.forEach((p) => {
+						const card = document.createElement('div');
+						card.className = 'card card-clickable';
+						card.onclick = () => selectProject(p.id, p.name);
+						card.innerHTML = `
+        <div class="flex justify-between items-center">
+          <div>
+            <div class="card-title">📁 ${esc(p.name)}</div>
+            <div class="card-meta">${p.description ? esc(p.description) : 'No description'}</div>
+          </div>
+          <div>
+            <span class="badge badge-blue">${p._count ? p._count.versions : 0} versions</span>
+          </div>
+        </div>
+      `;
+						list.appendChild(card);
+					});
+				} catch (err) {
+					if (fetchId !== _fetchProjectsId) return;
+					loading.style.display = 'none';
+					showAlert('projects', err.message);
+				}
+			}
+
+			function showCreateProject() {
+				document.getElementById('create-project-form').style.display = 'block';
+				document.getElementById('input-project-name').focus();
+			}
+
+			function hideCreateProject() {
+				document.getElementById('create-project-form').style.display = 'none';
+				document.getElementById('input-project-name').value = '';
+				document.getElementById('input-project-desc').value = '';
+			}
+
+			async function createProject() {
+				const name = document.getElementById('input-project-name').value.trim();
+				const description = document.getElementById('input-project-desc').value.trim();
+
+				if (!name) return showAlert('projects', 'Please enter a project name.');
+				hideAlert('projects');
+
+				try {
+					const res = await apiFetch(state.serverUrl + '/projects', {
+						method: 'POST',
+						body: JSON.stringify({ name, description: description || undefined }),
+					});
+
+					if (!res.ok) {
+						const err = await res.json().catch(() => ({}));
+						throw new Error(err.error || 'Failed to create project');
+					}
+
+					const data = await res.json();
+					hideCreateProject();
+					pluginCall('showMessage', `Project "${name}" created!`);
+
+					// Select it immediately
+					selectProject(data.project.id, data.project.name);
+				} catch (err) {
+					showAlert('projects', err.message);
+				}
+			}
+
+			function selectProject(id, name) {
+				state.selectedProjectId = id;
+				state.selectedProjectName = name;
+				pluginCall('saveLastProject', id);
+				document.getElementById('publish-project-name').textContent = name;
+				showView('publish');
+			}
+
+			// ════════════════════════════════════════════════════════════════════
+			//  Publish View — Document Extraction
+			// ════════════════════════════════════════════════════════════════════
+
+			function handleDocumentData(data) {
+				state.documentData = data;
+				renderPublishView(data);
+			}
+
+			function refreshDocument() {
+				pluginCall('extractDocument');
+			}
+
+			function renderPublishView(data) {
+				document.getElementById('publish-doc-name').textContent = data.documentName;
+				const totalArtboards = data.pages.reduce((sum, p) => sum + p.artboards.length, 0);
+				const totalFlows = data.pages.reduce((sum, p) => sum + p.artboards.reduce((s, a) => s + a.flowCount, 0), 0);
+				document.getElementById('publish-doc-meta').textContent =
+					`${data.pages.length} page${data.pages.length !== 1 ? 's' : ''} · ` +
+					`${totalArtboards} artboard${totalArtboards !== 1 ? 's' : ''} · ` +
+					`${totalFlows} prototype link${totalFlows !== 1 ? 's' : ''}`;
+
+				// Render artboard checklist grouped by page
+				const container = document.getElementById('publish-artboards');
+				container.innerHTML = '';
+
+				data.pages.forEach((page) => {
+					if (page.artboards.length === 0) return;
+
+					const pageId = 'page-' + slugify(page.name);
+					const html = `
+      <div class="check-item check-group-header">
+        <input type="checkbox" id="${pageId}" checked onchange="togglePageArtboards(this, '${pageId}')">
+        <label for="${pageId}">${esc(page.name)} <span class="text-secondary text-xs">(${page.artboards.length})</span></label>
+      </div>
+      <div class="check-group" id="${pageId}-items">
+        ${page.artboards
+					.map(
+						(a) => `
+          <div class="check-item">
+            <input type="checkbox" class="artboard-check" data-id="${a.id}" data-page="${esc(page.name)}" id="ab-${a.id}" checked>
+            <label for="ab-${a.id}">
+              ${esc(a.name)}
+              <span class="text-xs text-secondary">${a.width}×${a.height}</span>
+              ${a.flowCount > 0 ? `<span class="badge badge-blue" style="margin-left:4px">${a.flowCount} flows</span>` : ''}
+            </label>
+          </div>
+        `,
+					)
+					.join('')}
+      </div>
+    `;
+					container.insertAdjacentHTML('beforeend', html);
+				});
+			}
+
+			function togglePageArtboards(checkbox, pageId) {
+				const items = document.querySelectorAll(`#${pageId}-items .artboard-check`);
+				items.forEach((cb) => (cb.checked = checkbox.checked));
+			}
+
+			// ════════════════════════════════════════════════════════════════════
+			//  Publish Flow
+			// ════════════════════════════════════════════════════════════════════
+
+			let publishQueue = [];
+			let publishIndex = 0;
+			let publishVersionId = null;
+			let _uploadedSketchIds = new Set(); // track which artboards are already uploaded
+
+			async function startPublish(isResume) {
+				if (!state.selectedProjectId || !state.documentData) return;
+				hideAlert('publish');
+
+				// Gather selected artboards
+				const checks = document.querySelectorAll('.artboard-check:checked');
+				if (checks.length === 0) {
+					return showAlert('publish', 'Please select at least one artboard to publish.');
+				}
+
+				const selected = new Set();
+				checks.forEach((cb) => selected.add(cb.dataset.id));
+
+				// Build publish queue (metadata only – layers/flows loaded lazily)
+				publishQueue = [];
+				state.documentData.pages.forEach((page) => {
+					page.artboards.forEach((artboard) => {
+						if (selected.has(artboard.id)) {
+							publishQueue.push({ ...artboard, pageName: page.name });
+						}
+					});
+				});
+
+				if (!isResume) {
+					publishIndex = 0;
+					state.publishStats = { screens: 0, flows: 0, tokens: 0 };
+					_uploadedSketchIds = new Set();
+				}
+
+				showView('progress');
+				initProgressSteps(publishQueue.length);
+				setProgress(0, isResume ? 'Resuming…' : 'Creating version…');
+				startProgressTimer();
+				hideResumeUI();
+
+				try {
+					// 1. Create version (or reuse existing one on resume)
+					if (!isResume || !publishVersionId) {
+						const vRes = await apiFetch(`${state.serverUrl}/projects/${state.selectedProjectId}/versions`, {
+							method: 'POST',
+						});
+						if (!vRes.ok) throw new Error('Failed to create version');
+						const vData = await vRes.json();
+						publishVersionId = vData.version.id;
+						_uploadedSketchIds = new Set();
+					} else {
+						// Resuming: fetch already uploaded sketchIds from server
+						setProgress(2, 'Checking previously uploaded screens…');
+						try {
+							const uRes = await apiFetch(
+								`${state.serverUrl}/projects/${state.selectedProjectId}/versions/${publishVersionId}/uploaded-screens`,
+							);
+							if (uRes.ok) {
+								const uData = await uRes.json();
+								_uploadedSketchIds = new Set(uData.sketchIds || []);
+							}
+						} catch (e) {
+							/* continue without skip info */
+						}
+					}
+
+					// 2. Upload artboards one by one
+					const toUpload = publishQueue.filter((a) => !_uploadedSketchIds.has(a.id));
+					const skippedCount = publishQueue.length - toUpload.length;
+					if (skippedCount > 0) {
+						state.publishStats.screens = skippedCount;
+					}
+
+					setStepActive('pstep-screens', `Uploading screens (${skippedCount}/${publishQueue.length})…`);
+					for (let i = 0; i < toUpload.length; i++) {
+						const artboard = toUpload[i];
+						const screenNum = skippedCount + i + 1;
+						const totalSteps = toUpload.length * 3 + 2;
+						const basePct = Math.round(((i * 3) / totalSteps) * 90) + 5;
+
+						// 2a. Extract layer tree + flows for this artboard (lazy)
+						setProgress(basePct, `Extracting layers: ${artboard.name}`);
+						setStepActive('pstep-screens', `Extracting ${screenNum}/${publishQueue.length}: ${artboard.name}`);
+						const artboardData = await requestArtboardData(artboard.id);
+
+						// 2b. Export image (with retry)
+						const pctExport = basePct + Math.round((1 / totalSteps) * 90);
+						setProgress(pctExport, `Exporting image: ${artboard.name}`);
+						setStepActive('pstep-screens', `Exporting ${screenNum}/${publishQueue.length}: ${artboard.name}`);
+						const imageBase64 = await requestArtboardImageWithRetry(artboard.id, artboard.name);
+
+						// 2c. Upload to server
+						const pctUpload = basePct + Math.round((2 / totalSteps) * 90);
+						setProgress(pctUpload, `Uploading: ${artboard.name}`);
+						setStepActive('pstep-screens', `Uploading ${screenNum}/${publishQueue.length}: ${artboard.name}`);
+
+						const sRes = await apiFetch(
+							`${state.serverUrl}/projects/${state.selectedProjectId}/versions/${publishVersionId}/screens`,
+							{
+								method: 'POST',
+								body: JSON.stringify({
+									name: artboard.name,
+									sketchId: artboard.id,
+									pageName: artboard.pageName,
+									width: artboard.width,
+									height: artboard.height,
+									imageBase64: imageBase64,
+									layers: artboardData.layers,
+									flows: artboardData.flows,
+									displayOrder: artboard.displayOrder,
+								}),
+							},
+						);
+
+						if (!sRes.ok) {
+							const err = await sRes.json().catch(() => ({}));
+							throw new Error(`Failed to upload "${artboard.name}": ${err.error || sRes.status}`);
+						}
+
+						_uploadedSketchIds.add(artboard.id);
+						state.publishStats.screens++;
+						state.publishStats.flows += (artboardData.flows || []).length;
+					}
+
+					// 3. Upload design tokens
+					setStepActive('pstep-tokens', 'Uploading design tokens…');
+					const includeTokens = document.getElementById('opt-tokens').checked;
+					if (includeTokens && state.documentData.designTokens) {
+						setProgress(92, 'Uploading design tokens…');
+
+						const tokens = state.documentData.designTokens;
+						state.publishStats.tokens =
+							(tokens.colors?.length || 0) + (tokens.textStyles?.length || 0) + (tokens.layerStyles?.length || 0);
+
+						const tRes = await apiFetch(
+							`${state.serverUrl}/projects/${state.selectedProjectId}/versions/${publishVersionId}/tokens`,
+							{ method: 'POST', body: JSON.stringify(tokens) },
+						);
+						if (!tRes.ok) console.warn('Token upload failed, continuing…');
+					}
+
+					// 4. Finalize version
+					setStepActive('pstep-finalize', 'Finalizing…');
+					setProgress(97, 'Finalizing…');
+					await apiFetch(
+						`${state.serverUrl}/projects/${state.selectedProjectId}/versions/${publishVersionId}/complete`,
+						{ method: 'PUT' },
+					);
+
+					setAllStepsDone();
+					setProgress(100, 'Done!');
+					stopProgressTimer();
+					publishVersionId = null; // reset after success
+
+					// Show success
+					setTimeout(() => showSuccess(), 400);
+				} catch (err) {
+					stopProgressTimer();
+					// Show failure with resume option
+					showPublishError(err.message || 'Publish failed.');
+				}
+			}
+
+			function showPublishError(message) {
+				const el = document.getElementById('progress-detail');
+				el.textContent = 'Failed: ' + message;
+				el.style.color = 'var(--error)';
+				document.getElementById('progress-title').textContent = 'Publish Failed';
+
+				// Hide spinner, show error icon
+				const spinner = document.querySelector('#view-progress .spinner');
+				if (spinner) spinner.style.display = 'none';
+
+				showResumeUI(message);
+			}
+
+			function showResumeUI(message) {
+				let container = document.getElementById('resume-actions');
+				if (!container) {
+					container = document.createElement('div');
+					container.id = 'resume-actions';
+					container.style.cssText =
+						'margin-top:20px; display:flex; flex-direction:column; gap:8px; align-items:center;';
+					document.getElementById('view-progress').appendChild(container);
+				}
+				const uploaded = _uploadedSketchIds.size;
+				const total = publishQueue.length;
+				container.innerHTML = `
+					<p class="text-sm text-secondary" style="text-align:center; max-width:280px;">
+						${uploaded} of ${total} screens uploaded. You can resume from where it stopped.
+					</p>
+					<button class="btn btn-primary" onclick="resumePublish()">Resume Upload</button>
+					<button class="btn btn-secondary btn-sm" onclick="cancelPublish()">Cancel &amp; Discard</button>
+				`;
+				container.style.display = 'flex';
+			}
+
+			function hideResumeUI() {
+				const el = document.getElementById('resume-actions');
+				if (el) el.style.display = 'none';
+				// Reset progress UI state
+				const detail = document.getElementById('progress-detail');
+				if (detail) detail.style.color = '';
+				const spinner = document.querySelector('#view-progress .spinner');
+				if (spinner) spinner.style.display = '';
+				document.getElementById('progress-title').textContent = 'Publishing…';
+			}
+
+			function resumePublish() {
+				startPublish(true);
+			}
+
+			function cancelPublish() {
+				publishVersionId = null;
+				_uploadedSketchIds = new Set();
+				publishQueue = [];
+				showView('publish');
+				hideAlert('publish');
+			}
+
+			// ── Retry wrapper for image export ──
+			async function requestArtboardImageWithRetry(artboardId, name, maxRetries) {
+				maxRetries = maxRetries || 3;
+				let lastErr;
+				for (let attempt = 1; attempt <= maxRetries; attempt++) {
+					try {
+						return await requestArtboardImage(artboardId);
+					} catch (err) {
+						lastErr = err;
+						if (attempt < maxRetries) {
+							setProgress(null, `Retry ${attempt}/${maxRetries - 1}: exporting ${name}…`);
+							// Small delay before retry
+							await new Promise((r) => setTimeout(r, 1000));
+						}
+					}
+				}
+				throw lastErr;
+			}
+
+			// ── Promise-based artboard data extraction from plugin native side ──
+			let _dataResolve = null;
+			let _dataReject = null;
+
+			function requestArtboardData(artboardId) {
+				return new Promise((resolve, reject) => {
+					_dataResolve = resolve;
+					_dataReject = reject;
+					pluginCall('extractArtboardData', artboardId);
+					setTimeout(() => {
+						if (_dataReject) {
+							_dataReject(new Error('Artboard data extraction timed out'));
+							_dataResolve = null;
+							_dataReject = null;
+						}
+					}, 60000);
+				});
+			}
+
+			function handleArtboardData(payload) {
+				if (_dataResolve) {
+					_dataResolve(payload);
+					_dataResolve = null;
+					_dataReject = null;
+				}
+			}
+
+			function handleArtboardDataError(payload) {
+				if (_dataReject) {
+					_dataReject(new Error(payload.message));
+					_dataResolve = null;
+					_dataReject = null;
+				}
+			}
+
+			// ── Promise-based artboard image request from the Sketch native side ──
+			let _imageResolve = null;
+			let _imageReject = null;
+
+			function requestArtboardImage(artboardId) {
+				return new Promise((resolve, reject) => {
+					_imageResolve = resolve;
+					_imageReject = reject;
+					pluginCall('exportArtboard', artboardId);
+					// Timeout after 60 minutes (large artboards can be slow)
+					setTimeout(
+						() => {
+							if (_imageReject) {
+								_imageReject(new Error('Image export timed out'));
+								_imageResolve = null;
+								_imageReject = null;
+							}
+						},
+						60 * 60 * 1000,
+					);
+				});
+			}
+
+			function handleArtboardImage(payload) {
+				if (_imageResolve) {
+					_imageResolve(payload.imageBase64);
+					_imageResolve = null;
+					_imageReject = null;
+				}
+			}
+
+			function handleArtboardImageError(payload) {
+				if (_imageReject) {
+					_imageReject(new Error(payload.message));
+					_imageResolve = null;
+					_imageReject = null;
+				}
+			}
+
+			// ════════════════════════════════════════════════════════════════════
+			//  Progress & Success
+			// ════════════════════════════════════════════════════════════════════
+
+			let _progressTimer = null;
+			let _progressStart = 0;
+
+			function startProgressTimer() {
+				_progressStart = Date.now();
+				const el = document.getElementById('progress-elapsed');
+				if (_progressTimer) clearInterval(_progressTimer);
+				_progressTimer = setInterval(() => {
+					const secs = Math.floor((Date.now() - _progressStart) / 1000);
+					const m = Math.floor(secs / 60);
+					const s = secs % 60;
+					el.textContent = m > 0 ? `${m}m ${s}s` : `${s}s`;
+				}, 1000);
+				// Show patience message after 8 seconds
+				setTimeout(() => {
+					const p = document.getElementById('progress-patience');
+					if (p && state.currentView === 'progress') p.style.display = 'block';
+				}, 8000);
+			}
+
+			function stopProgressTimer() {
+				if (_progressTimer) {
+					clearInterval(_progressTimer);
+					_progressTimer = null;
+				}
+			}
+
+			function setProgress(percent, detail) {
+				if (percent !== null && percent !== undefined) {
+					document.getElementById('progress-fill').style.width = percent + '%';
+					document.getElementById('progress-percent').textContent = percent + '%';
+				}
+				if (detail) document.getElementById('progress-detail').textContent = detail;
+			}
+
+			function initProgressSteps(artboardCount) {
+				const ul = document.getElementById('progress-steps');
+				ul.innerHTML = `
+					<li class="progress-step active" id="pstep-create">
+						<span class="progress-step-icon"><span class="step-spinner"></span></span>
+						Creating version…
+					</li>
+					<li class="progress-step" id="pstep-screens">
+						<span class="progress-step-icon">○</span>
+						Upload ${artboardCount} screen${artboardCount !== 1 ? 's' : ''}
+					</li>
+					<li class="progress-step" id="pstep-tokens">
+						<span class="progress-step-icon">○</span>
+						Upload design tokens
+					</li>
+					<li class="progress-step" id="pstep-finalize">
+						<span class="progress-step-icon">○</span>
+						Finalize
+					</li>
+				`;
+			}
+
+			function setStepActive(stepId, label) {
+				// Mark all previous steps as done
+				const steps = document.querySelectorAll('.progress-step');
+				let found = false;
+				steps.forEach((s) => {
+					if (s.id === stepId) {
+						found = true;
+						s.className = 'progress-step active';
+						s.querySelector('.progress-step-icon').innerHTML = '<span class="step-spinner"></span>';
+						if (label) {
+							s.childNodes[s.childNodes.length - 1].textContent = label;
+						}
+					} else if (!found) {
+						s.className = 'progress-step done';
+						s.querySelector('.progress-step-icon').textContent = '✓';
+					}
+				});
+			}
+
+			function setAllStepsDone() {
+				document.querySelectorAll('.progress-step').forEach((s) => {
+					s.className = 'progress-step done';
+					s.querySelector('.progress-step-icon').textContent = '✓';
+				});
+			}
+
+			function showSuccess() {
+				const s = state.publishStats;
+				document.getElementById('success-detail').textContent = `Version published to "${state.selectedProjectName}"`;
+
+				document.getElementById('success-stats').innerHTML = `
+    <div class="stat">
+      <div class="stat-value">${s.screens}</div>
+      <div class="stat-label">Screens</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${s.flows}</div>
+      <div class="stat-label">Prototype Links</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${s.tokens}</div>
+      <div class="stat-label">Design Tokens</div>
+    </div>
+  `;
+
+				showView('success');
+				pluginCall('showMessage', `✅ Published ${s.screens} screens with ${s.flows} prototype links!`);
+			}
+
+			function openInBrowser() {
+				const url = `${state.serverUrl.replace(/:\d+$/, ':5173')}/projects/${state.selectedProjectId}`;
+				pluginCall('openUrl', url);
+			}
+
+			// ════════════════════════════════════════════════════════════════════
+			//  API Helper
+			// ════════════════════════════════════════════════════════════════════
+
+			function apiFetch(url, options) {
+				const headers = {
+					'Content-Type': 'application/json',
+					...(options?.headers || {}),
+				};
+				if (state.authToken) {
+					headers['Authorization'] = 'Bearer ' + state.authToken;
+				}
+				return fetch(url, { ...options, headers });
+			}
+
+			// ════════════════════════════════════════════════════════════════════
+			//  Utilities
+			// ════════════════════════════════════════════════════════════════════
+
+			function esc(str) {
+				const div = document.createElement('div');
+				div.textContent = str;
+				return div.innerHTML;
+			}
+
+			function slugify(str) {
+				return str
+					.toLowerCase()
+					.replace(/[^a-z0-9]+/g, '-')
+					.replace(/^-|-$/g, '');
+			}
+		</script>
+	</body>
+</html>

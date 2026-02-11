@@ -1,0 +1,32 @@
+{
+	"$schema": "https://raw.githubusercontent.com/sketch-hq/SketchAPI/develop/docs/sketch-plugin-manifest-schema.json",
+	"icon": "icon.png",
+	"version": "2.4.0",
+	"name": "Flow – Design Handoff",
+	"description": "Publish Sketch designs to Flow for developer handoff with full prototype flows.",
+	"identifier": "sa.hir.flow",
+	"compatibleVersion": "53",
+	"appcast": "https://flow.hir.sa/api/appcast",
+	"author": "Hesham",
+	"authorEmail": "heshamidhi@gmail.com",
+	"homepage": "https://flow.hir.sa",
+	"disableCocoaScriptPreprocessor": true,
+	"commands": [
+		{
+			"name": "Publish to Flow",
+			"identifier": "sa.hir.flow.publish",
+			"script": "./webview.js",
+			"handler": "onPublish"
+		},
+		{
+			"name": "Settings",
+			"identifier": "sa.hir.flow.settings",
+			"script": "./webview.js",
+			"handler": "onSettings"
+		}
+	],
+	"menu": {
+		"title": "Flow",
+		"items": ["sa.hir.flow.publish", "-", "sa.hir.flow.settings"]
+	}
+}
