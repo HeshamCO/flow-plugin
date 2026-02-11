@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
+  <channel>
+    <item>
+      <enclosure url="https://github.com/heshamCO/flow-plugin/releases/download/v2.4.0/Flow.sketchplugin.zip" sparkle:version="2.4.0"/>
+    </item>
+  </channel>
+</rss>
