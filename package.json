@@ -1,9 +1,13 @@
 {
 	"name": "Flow-plugin",
 	"description": "Sketch plugin for Flow design handoff – publish designs with full prototype flows for developer inspection",
-	"version": "2.4.1",
+	"version": "2.4.3",
 	"engines": {
 		"sketch": ">=53.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/heshamCO/flow-plugin.git"
 	},
 	"skpm": {
 		"name": "Flow-plugin",
