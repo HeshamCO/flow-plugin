@@ -250,6 +250,7 @@
 							layers: artboardData.layers,
 							flows: artboardData.flows,
 							displayOrder: artboard.displayOrder,
+							isFlowHome: artboard.isFlowHome || false,
 						});
 
 						setQueueItemStatus(artboard.id, 'done');

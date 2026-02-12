@@ -1,7 +1,7 @@
 {
 	"$schema": "https://raw.githubusercontent.com/sketch-hq/SketchAPI/develop/docs/sketch-plugin-manifest-schema.json",
 	"icon": "icon.png",
-	"version": "2.4.0",
+	"version": "2.4.2",
 	"name": "Flow – Design Handoff",
 	"description": "Publish Sketch designs to Flow for developer handoff with full prototype flows.",
 	"identifier": "sa.hir.flow",

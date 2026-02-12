@@ -36,6 +36,7 @@ export interface ArtboardMeta {
 	displayOrder: number;
 	flowCount: number;
 	isSymbolMaster: boolean;
+	isFlowHome: boolean;
 }
 
 export interface ArtboardData {

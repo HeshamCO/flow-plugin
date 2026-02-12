@@ -5,10 +5,6 @@
 	"engines": {
 		"sketch": ">=53.0"
 	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/heshamCO/flow-plugin.git"
-	},
 	"skpm": {
 		"name": "Flow-plugin",
 		"manifest": "src/manifest.json",

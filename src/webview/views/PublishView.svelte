@@ -509,7 +509,7 @@
 	.check-item input[type='checkbox'] {
 		width: 16px;
 		height: 16px;
-		accent-color: var(--text);
+		accent-color: var(--color-blue-600);
 		flex-shrink: 0;
 		cursor: pointer;
 	}

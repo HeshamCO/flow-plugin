@@ -256,6 +256,7 @@ function extractArtboardMeta(artboard, pageName, index) {
 		displayOrder: index,
 		flowCount: countFlows(artboard),
 		isSymbolMaster: artboard.type === 'SymbolMaster',
+		isFlowHome: artboard.flowStartPoint === true,
 	};
 }
 

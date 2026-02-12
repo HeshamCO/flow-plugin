@@ -169,6 +169,7 @@ export async function uploadScreen(
 		layers: any[];
 		flows: any[];
 		displayOrder: number;
+		isFlowHome?: boolean;
 	},
 ): Promise<void> {
 	// Convert base64 to binary Blob and send as multipart/form-data
@@ -189,6 +190,7 @@ export async function uploadScreen(
 		layers: screenData.layers,
 		flows: screenData.flows,
 		displayOrder: screenData.displayOrder,
+		isFlowHome: screenData.isFlowHome || false,
 	};
 
 	const formData = new FormData();
