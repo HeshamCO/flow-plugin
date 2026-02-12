@@ -229,6 +229,7 @@ export interface Project {
 
 export interface Version {
 	id: string;
+	number: number;
 	projectId: string;
 	status: 'uploading' | 'complete';
 	createdAt: string;
@@ -254,6 +255,79 @@ export interface ApiError {
 	message?: string;
 }
 
+export interface HandoffLock {
+	id: string;
+	projectId: string;
+	holderUserId: string;
+	holder: { id: string; username: string; name: string | null };
+	acquiredAt: string;
+	expiresAt: string;
+	versionId: string | null;
+	revisionId: string | null;
+	overrideReason: string | null;
+}
+
+export interface VersionRevision {
+	id: string;
+	versionId: string;
+	revisionNumber: number;
+	status: 'uploading' | 'complete' | 'failed';
+	note: string;
+	basedOnRevisionId: string | null;
+	sketchArtifactId: string | null;
+	diffSummary: any;
+	createdAt: string;
+	completedAt: string | null;
+	uploadedByUser: { id: string; username: string; name: string | null };
+	sketchArtifact?: {
+		id: string;
+		fileName: string;
+		sizeBytes: number;
+		sha256: string;
+		createdAt: string;
+	} | null;
+}
+
+export interface LayerDelta {
+	layerId: string;
+	name: string;
+	change: 'added' | 'removed' | 'modified';
+	baseFrame: Frame | null;
+	headFrame: Frame | null;
+}
+
+export interface ScreenDeltaSummary {
+	sketchId: string;
+	name: string;
+	pageName: string;
+	change: 'added' | 'removed' | 'modified' | 'unchanged';
+	baseImageUrl: string | null;
+	headImageUrl: string | null;
+	baseFrame: { width: number; height: number } | null;
+	headFrame: { width: number; height: number } | null;
+	layerCounts: {
+		added: number;
+		removed: number;
+		modified: number;
+	};
+	layerDeltas: LayerDelta[];
+}
+
+export interface RevisionCompareResult {
+	baseRevisionId: string | null;
+	headRevisionId: string;
+	totals: {
+		screensAdded: number;
+		screensRemoved: number;
+		screensModified: number;
+		screensUnchanged: number;
+		layersAdded: number;
+		layersRemoved: number;
+		layersModified: number;
+	};
+	screens: ScreenDeltaSummary[];
+}
+
 // ─── Plugin ↔ WebView Messages ───────────────────────────────────────
 
 /** Messages sent from the WebView to the native plugin via postMessage */
@@ -266,6 +340,7 @@ export type WebViewToPluginMessage =
 	| { handler: 'extractDocument'; data: '' }
 	| { handler: 'exportArtboard'; data: string }
 	| { handler: 'extractArtboardData'; data: string }
+	| { handler: 'uploadSketchFile'; data: string }
 	| { handler: 'showMessage'; data: string }
 	| { handler: 'openUrl'; data: string };
 
@@ -282,7 +357,9 @@ export type PluginToWebViewMessage =
 	| { type: 'artboardImage'; payload: { artboardId: string; imageBase64: string } }
 	| { type: 'artboardImageError'; payload: { artboardId: string; message: string } }
 	| { type: 'artboardData'; payload: ArtboardData }
-	| { type: 'artboardDataError'; payload: { artboardId: string; message: string } };
+	| { type: 'artboardDataError'; payload: { artboardId: string; message: string } }
+	| { type: 'sketchFileUploaded'; payload: { revisionId: string; artifact: any } }
+	| { type: 'sketchFileUploadError'; payload: { revisionId: string; message: string } };
 
 // ─── Publish Pipeline ────────────────────────────────────────────────
 

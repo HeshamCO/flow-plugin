@@ -21,6 +21,7 @@ export interface PublishState {
 	isPublishing: boolean;
 	step: PublishStep;
 	versionId: string | null;
+	revisionId: string | null;
 	queue: PublishQueueItem[];
 	uploadedIds: Set<string>;
 	stats: PublishStats;
@@ -36,6 +37,7 @@ const defaultPublishState: PublishState = {
 	isPublishing: false,
 	step: 'creating',
 	versionId: null,
+	revisionId: null,
 	queue: [],
 	uploadedIds: new Set(),
 	stats: { screens: 0, flows: 0, tokens: 0 },

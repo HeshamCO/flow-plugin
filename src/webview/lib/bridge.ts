@@ -65,6 +65,7 @@ type PendingRequest = {
 
 const pendingDataRequests = new Map<string, PendingRequest>();
 const pendingImageRequests = new Map<string, PendingRequest>();
+const pendingSketchUploads = new Map<string, PendingRequest>();
 
 /**
  * Request artboard layer data from the native side. Returns a Promise.
@@ -131,6 +132,37 @@ export async function requestArtboardImageWithRetry(
 	throw lastErr;
 }
 
+/**
+ * Request native-side upload of the current .sketch document.
+ */
+export function requestSketchFileUpload(
+	payload: {
+		serverUrl: string;
+		authToken: string;
+		projectId: string;
+		versionId: string;
+		revisionId: string;
+	},
+	timeoutMs = 10 * 60_000,
+): Promise<any> {
+	return new Promise((resolve, reject) => {
+		const key = payload.revisionId;
+		const existing = pendingSketchUploads.get(key);
+		if (existing) {
+			clearTimeout(existing.timer);
+			existing.reject(new Error('Superseded by new upload request'));
+		}
+
+		const timer = setTimeout(() => {
+			pendingSketchUploads.delete(key);
+			reject(new Error('Sketch file upload timed out'));
+		}, timeoutMs);
+
+		pendingSketchUploads.set(key, { resolve, reject, timer });
+		pluginCall('uploadSketchFile', payload);
+	});
+}
+
 // ─── Register native message handlers for promise resolution ─────────
 
 export function initBridgeHandlers(): void {
@@ -171,6 +203,26 @@ export function initBridgeHandlers(): void {
 			clearTimeout(pending.timer);
 			pending.reject(new Error(payload.message));
 			pendingImageRequests.delete(id);
+		}
+	});
+
+	onPluginMessage('sketchFileUploaded', (payload) => {
+		const id = payload.revisionId;
+		const pending = pendingSketchUploads.get(id);
+		if (pending) {
+			clearTimeout(pending.timer);
+			pending.resolve(payload.artifact);
+			pendingSketchUploads.delete(id);
+		}
+	});
+
+	onPluginMessage('sketchFileUploadError', (payload) => {
+		const id = payload.revisionId;
+		const pending = pendingSketchUploads.get(id);
+		if (pending) {
+			clearTimeout(pending.timer);
+			pending.reject(new Error(payload.message));
+			pendingSketchUploads.delete(id);
 		}
 	});
 }

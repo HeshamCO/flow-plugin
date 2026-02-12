@@ -16,12 +16,24 @@
 		clearVersionSelection,
 	} from '../stores/state';
 	import { pluginCall, onPluginMessage } from '../lib/bridge';
-	import { fetchProjectDetail, getUploadedScreenIds } from '../lib/api';
-	import type { DocumentData, PageData, ArtboardMeta, Version } from '../../types/index';
+	import {
+		fetchProjectDetail,
+		getUploadedScreenIds,
+		fetchHandoffLock,
+		checkoutHandoffLock,
+		releaseHandoffLock,
+		overrideHandoffLock,
+		listRevisions,
+	} from '../lib/api';
+	import { addToast } from '../stores/toast';
+	import type { DocumentData, PageData, ArtboardMeta, Version, VersionRevision } from '../../types/index';
 
 	let error = '';
 	let loading = true;
 	let versionsLoading = false;
+	let lockLoading = false;
+	let lockBusy = false;
+	let revisionsLoading = false;
 
 	$: documentData = $appState.documentData;
 	$: selectedCount = $selectedArtboardIds.size;
@@ -44,6 +56,14 @@
 	$: alreadyUploadedIds = $appState.alreadyUploadedIds;
 	$: uploadedCount = alreadyUploadedIds.size;
 	$: loadingVersionScreens = $appState.loadingVersionScreens;
+	$: handoffLock = $appState.handoffLock;
+	$: versionRevisions = $appState.versionRevisions;
+	$: selectedRevisionId = $appState.selectedRevisionId;
+	$: checkinNote = $appState.checkinNote;
+	$: selectedVersion = versions.find((v) => v.id === selectedVersionId) || null;
+	$: nextRevisionNumber = (versionRevisions[0]?.revisionNumber || 0) + 1;
+	$: selectedRevision = versionRevisions.find((revision) => revision.id === selectedRevisionId) || null;
+	$: revisionReady = !!selectedRevision && selectedRevision.status === 'uploading' && !!selectedRevision.sketchArtifactId;
 
 	// Compute how many selected screens are new vs overwrite
 	$: newCount = selectedVersionId
@@ -75,6 +95,7 @@
 
 		// Load project versions
 		loadVersions();
+		loadHandoff();
 
 		return () => {
 			unsub();
@@ -93,12 +114,50 @@
 
 			if (!$appState.selectedVersionId && detail.versions && detail.versions.length > 0) {
 				setSelectedVersion(detail.versions[0].id);
+				await loadRevisions(detail.versions[0].id);
+			} else if ($appState.selectedVersionId) {
+				await loadRevisions($appState.selectedVersionId);
 			}
 		} catch (err: any) {
 			console.warn('[PublishView] Failed to load versions:', err.message);
 			updateState({ projectVersions: [] });
 		} finally {
 			versionsLoading = false;
+		}
+	}
+
+	async function loadHandoff() {
+		const projectId = $appState.selectedProjectId;
+		if (!projectId) return;
+		lockLoading = true;
+		try {
+			const lock = await fetchHandoffLock($appState.serverUrl, projectId);
+			updateState({ handoffLock: lock });
+		} catch (err: any) {
+			console.warn('[PublishView] Failed to load lock:', err.message);
+		} finally {
+			lockLoading = false;
+		}
+	}
+
+	async function loadRevisions(versionId: string) {
+		const projectId = $appState.selectedProjectId;
+		if (!projectId) return;
+		revisionsLoading = true;
+		try {
+			const revisions = await listRevisions($appState.serverUrl, projectId, versionId);
+			const firstReady = revisions.find(
+				(revision) => revision.status === 'uploading' && !!revision.sketchArtifactId,
+			) as VersionRevision | undefined;
+			updateState({
+				versionRevisions: revisions,
+				selectedRevisionId: firstReady?.id || null,
+			});
+		} catch (err: any) {
+			console.warn('[PublishView] Failed to load revisions:', err.message);
+			updateState({ versionRevisions: [], selectedRevisionId: null });
+		} finally {
+			revisionsLoading = false;
 		}
 	}
 
@@ -110,6 +169,7 @@
 			if (allIds.length > 0) {
 				selectAllArtboards(allIds);
 			}
+			updateState({ versionRevisions: [], selectedRevisionId: null });
 			return;
 		}
 
@@ -124,6 +184,7 @@
 			);
 			const uploadedSet = new Set(ids);
 			updateState({ alreadyUploadedIds: uploadedSet, loadingVersionScreens: false });
+			await loadRevisions(value);
 
 			// Auto-select only NEW artboards (deselect already-uploaded ones)
 			const newIds = allIds.filter((id: string) => !uploadedSet.has(id));
@@ -137,8 +198,61 @@
 
 	function handleNewVersion() {
 		clearVersionSelection();
+		updateState({ versionRevisions: [], selectedRevisionId: null });
 		if (allIds.length > 0) {
 			selectAllArtboards(allIds);
+		}
+	}
+
+	async function handleCheckout() {
+		const projectId = $appState.selectedProjectId;
+		if (!projectId) return;
+		lockBusy = true;
+		try {
+			const lock = await checkoutHandoffLock($appState.serverUrl, projectId, {
+				versionId: selectedVersionId || undefined,
+			});
+			updateState({ handoffLock: lock });
+			addToast('Project checked out for handoff.', 'success');
+		} catch (err: any) {
+			error = err.message || 'Failed to checkout lock';
+		} finally {
+			lockBusy = false;
+		}
+	}
+
+	async function handleRelease() {
+		const projectId = $appState.selectedProjectId;
+		if (!projectId) return;
+		lockBusy = true;
+		try {
+			await releaseHandoffLock($appState.serverUrl, projectId);
+			updateState({ handoffLock: null });
+			addToast('Handoff lock released.', 'success');
+		} catch (err: any) {
+			error = err.message || 'Failed to release lock';
+		} finally {
+			lockBusy = false;
+		}
+	}
+
+	async function handleOverride() {
+		const projectId = $appState.selectedProjectId;
+		if (!projectId) return;
+		const reason = window.prompt('Override reason');
+		if (!reason || !reason.trim()) return;
+		lockBusy = true;
+		try {
+			const lock = await overrideHandoffLock($appState.serverUrl, projectId, {
+				reason: reason.trim(),
+				versionId: selectedVersionId || undefined,
+			});
+			updateState({ handoffLock: lock });
+			addToast('Lock overridden.', 'warning');
+		} catch (err: any) {
+			error = err.message || 'Failed to override lock';
+		} finally {
+			lockBusy = false;
 		}
 	}
 
@@ -306,6 +420,97 @@
 			{/if}
 		</div>
 
+		<div class="handoff-section card">
+			<div class="version-header">
+				<div class="version-label">Handoff Lock</div>
+				<div class="lock-actions">
+					<Button variant="secondary" size="sm" on:click={handleCheckout} disabled={lockBusy}>
+						Checkout
+					</Button>
+					<Button variant="secondary" size="sm" on:click={handleRelease} disabled={lockBusy}>
+						Release
+					</Button>
+					<Button variant="ghost" size="sm" on:click={handleOverride} disabled={lockBusy}>
+						Override
+					</Button>
+				</div>
+			</div>
+			{#if lockLoading}
+				<div class="version-loading">
+					<div class="spinner-sm"></div>
+					<span class="text-secondary text-xs">Loading lock…</span>
+				</div>
+			{:else if handoffLock}
+				<div class="lock-pill">
+					<span>Held by @{handoffLock.holder.username}</span>
+					<span class="text-secondary text-xs">expires {new Date(handoffLock.expiresAt).toLocaleString()}</span>
+				</div>
+			{:else}
+				<div class="text-secondary text-xs">No active lock</div>
+			{/if}
+		</div>
+
+		<div class="revision-section card">
+			<div class="version-label">Revision Target</div>
+			{#if selectedVersion}
+				<div class="card-meta">
+					Version {selectedVersion.number} / Next revision r{nextRevisionNumber}
+				</div>
+			{:else}
+				<div class="card-meta">New version will start at r1</div>
+			{/if}
+			{#if revisionReady}
+				<div class="version-note">
+					<svg
+						width="14"
+						height="14"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+						<polyline points="22 4 12 14.01 9 11.01" />
+					</svg>
+					<span>Sketch uploaded for r{selectedRevision?.revisionNumber}. You can upload screens now.</span>
+				</div>
+			{:else}
+				<div class="text-secondary text-xs mt-2">
+					Upload Sketch file first, then upload screens.
+				</div>
+			{/if}
+			{#if revisionsLoading}
+				<div class="version-loading">
+					<div class="spinner-sm"></div>
+					<span class="text-secondary text-xs">Loading revisions…</span>
+				</div>
+			{:else if versionRevisions.length > 0}
+				<div class="revision-list">
+					{#each versionRevisions.slice(0, 3) as revision (revision.id)}
+						<div class="revision-item">
+							<span>r{revision.revisionNumber}</span>
+							<span class="text-secondary text-xs">{revision.status}</span>
+							<span class="text-secondary text-xs">by @{revision.uploadedByUser.username}</span>
+						</div>
+					{/each}
+				</div>
+			{/if}
+			<div class="note-field">
+				<label for="checkin-note" class="text-xs text-secondary">Check-in note *</label>
+				<textarea
+					id="checkin-note"
+					class="note-input"
+					placeholder="What changed in this handoff?"
+					rows="3"
+					value={checkinNote}
+					on:input={(e) =>
+						updateState({
+							checkinNote: (e.currentTarget as HTMLTextAreaElement).value,
+						})}
+				></textarea>
+			</div>
+		</div>
+
 		<!-- Select All / None -->
 		<div class="select-actions">
 			<label class="check-item">
@@ -420,11 +625,65 @@
 		padding: 12px 14px;
 	}
 
+	.handoff-section,
+	.revision-section {
+		padding: 12px 14px;
+	}
+
 	.version-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		margin-bottom: 8px;
+	}
+
+	.lock-actions {
+		display: flex;
+		gap: 6px;
+	}
+
+	.lock-pill {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 8px;
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		background: var(--surface);
+		font-size: 12px;
+	}
+
+	.revision-list {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		margin-top: 8px;
+	}
+
+	.revision-item {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 12px;
+	}
+
+	.note-field {
+		margin-top: 10px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.note-input {
+		width: 100%;
+		border: 1px solid var(--input);
+		border-radius: var(--radius);
+		padding: 8px;
+		font-size: 12px;
+		font-family: var(--font);
+		color: var(--text);
+		background: transparent;
+		resize: vertical;
 	}
 
 	.version-label {

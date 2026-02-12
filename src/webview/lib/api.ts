@@ -9,7 +9,16 @@
 import { get } from 'svelte/store';
 import { appState, resetAuth } from '../stores/state';
 import { addToast } from '../stores/toast';
-import type { AuthResponse, Project, ProjectDetail, Version, ApiError } from '../../types/index';
+import type {
+	AuthResponse,
+	Project,
+	ProjectDetail,
+	Version,
+	ApiError,
+	HandoffLock,
+	VersionRevision,
+	RevisionCompareResult,
+} from '../../types/index';
 
 /**
  * Base fetch wrapper with auth and error handling.
@@ -155,6 +164,122 @@ export async function getUploadedScreenIds(
 	return [];
 }
 
+export async function fetchHandoffLock(serverUrl: string, projectId: string): Promise<HandoffLock | null> {
+	const res = await apiFetch(`${serverUrl}/projects/${projectId}/handoff/lock`);
+	if (!res.ok) throw new Error('Failed to load handoff lock');
+	const data = await res.json();
+	return data.lock || null;
+}
+
+export async function checkoutHandoffLock(
+	serverUrl: string,
+	projectId: string,
+	payload: { versionId?: string; revisionId?: string } = {},
+): Promise<HandoffLock> {
+	const res = await apiFetch(`${serverUrl}/projects/${projectId}/handoff/checkout`, {
+		method: 'POST',
+		body: JSON.stringify(payload),
+	});
+	if (!res.ok) {
+		const err: ApiError = await res.json().catch(() => ({ error: `Server returned ${res.status}` }));
+		throw new Error(err.error || 'Failed to checkout lock');
+	}
+	const data = await res.json();
+	return data.lock;
+}
+
+export async function releaseHandoffLock(serverUrl: string, projectId: string): Promise<void> {
+	const res = await apiFetch(`${serverUrl}/projects/${projectId}/handoff/release`, {
+		method: 'POST',
+		body: JSON.stringify({}),
+	});
+	if (!res.ok) {
+		const err: ApiError = await res.json().catch(() => ({ error: `Server returned ${res.status}` }));
+		throw new Error(err.error || 'Failed to release lock');
+	}
+}
+
+export async function overrideHandoffLock(
+	serverUrl: string,
+	projectId: string,
+	payload: { reason: string; versionId?: string; revisionId?: string },
+): Promise<HandoffLock> {
+	const res = await apiFetch(`${serverUrl}/projects/${projectId}/handoff/override`, {
+		method: 'POST',
+		body: JSON.stringify(payload),
+	});
+	if (!res.ok) {
+		const err: ApiError = await res.json().catch(() => ({ error: `Server returned ${res.status}` }));
+		throw new Error(err.error || 'Failed to override lock');
+	}
+	const data = await res.json();
+	return data.lock;
+}
+
+export async function createRevision(
+	serverUrl: string,
+	projectId: string,
+	versionId: string,
+	payload: { note: string; basedOnRevisionId?: string },
+): Promise<VersionRevision> {
+	const res = await apiFetch(`${serverUrl}/projects/${projectId}/versions/${versionId}/revisions`, {
+		method: 'POST',
+		body: JSON.stringify(payload),
+	});
+	if (!res.ok) {
+		const err: ApiError = await res.json().catch(() => ({ error: `Server returned ${res.status}` }));
+		throw new Error(err.error || 'Failed to create revision');
+	}
+	const data = await res.json();
+	return data.revision;
+}
+
+export async function listRevisions(
+	serverUrl: string,
+	projectId: string,
+	versionId: string,
+): Promise<VersionRevision[]> {
+	const res = await apiFetch(`${serverUrl}/projects/${projectId}/versions/${versionId}/revisions`);
+	if (!res.ok) throw new Error('Failed to load revisions');
+	const data = await res.json();
+	return data.revisions || [];
+}
+
+export async function compareRevisions(
+	serverUrl: string,
+	projectId: string,
+	versionId: string,
+	baseRevisionId: string | null,
+	headRevisionId: string,
+): Promise<RevisionCompareResult> {
+	const params = new URLSearchParams({ head: headRevisionId });
+	if (baseRevisionId) params.set('base', baseRevisionId);
+	const res = await apiFetch(
+		`${serverUrl}/projects/${projectId}/versions/${versionId}/revisions/compare?${params.toString()}`,
+	);
+	if (!res.ok) throw new Error('Failed to compare revisions');
+	const data = await res.json();
+	return data.diff;
+}
+
+export async function finalizeRevision(
+	serverUrl: string,
+	projectId: string,
+	versionId: string,
+	revisionId: string,
+): Promise<void> {
+	const res = await apiFetch(
+		`${serverUrl}/projects/${projectId}/versions/${versionId}/revisions/${revisionId}/complete`,
+		{
+			method: 'PUT',
+		},
+	);
+	if (!res.ok) {
+		const err: ApiError = await res.json().catch(() => ({ error: `Server returned ${res.status}` }));
+		throw new Error(err.error || 'Failed to finalize revision');
+	}
+}
+
 export async function uploadScreen(
 	serverUrl: string,
 	projectId: string,
@@ -170,6 +295,7 @@ export async function uploadScreen(
 		flows: any[];
 		displayOrder: number;
 		isFlowHome?: boolean;
+		revisionId?: string;
 	},
 ): Promise<void> {
 	// Convert base64 to binary Blob and send as multipart/form-data
@@ -191,6 +317,7 @@ export async function uploadScreen(
 		flows: screenData.flows,
 		displayOrder: screenData.displayOrder,
 		isFlowHome: screenData.isFlowHome || false,
+		revisionId: screenData.revisionId,
 	};
 
 	const formData = new FormData();

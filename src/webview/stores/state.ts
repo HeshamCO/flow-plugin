@@ -7,6 +7,8 @@ import type {
 	DocumentData,
 	Project,
 	Version,
+	HandoffLock,
+	VersionRevision,
 	PublishStats,
 } from '../../types/index';
 import { pluginCall } from '../lib/bridge';
@@ -41,6 +43,10 @@ export interface AppState {
 	selectedVersionId: string | null;
 	alreadyUploadedIds: Set<string>;
 	loadingVersionScreens: boolean;
+	handoffLock: HandoffLock | null;
+	versionRevisions: VersionRevision[];
+	selectedRevisionId: string | null;
+	checkinNote: string;
 }
 
 const defaultState: AppState = {
@@ -58,6 +64,10 @@ const defaultState: AppState = {
 	selectedVersionId: null,
 	alreadyUploadedIds: new Set(),
 	loadingVersionScreens: false,
+	handoffLock: null,
+	versionRevisions: [],
+	selectedRevisionId: null,
+	checkinNote: '',
 };
 
 export const appState = writable<AppState>({ ...defaultState });
@@ -126,6 +136,8 @@ export function clearVersionSelection(): void {
 	updateState({
 		selectedVersionId: null,
 		alreadyUploadedIds: new Set(),
+		versionRevisions: [],
+		selectedRevisionId: null,
 	});
 }
 

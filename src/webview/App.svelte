@@ -5,7 +5,11 @@
 
 	// Bridge
 	import { initBridge, initBridgeHandlers, pluginCall, onPluginMessage } from './lib/bridge';
-	import { requestArtboardData, requestArtboardImageWithRetry } from './lib/bridge';
+	import {
+		requestArtboardData,
+		requestArtboardImageWithRetry,
+		requestSketchFileUpload,
+	} from './lib/bridge';
 	import { initTheme } from './lib/theme';
 
 	// Stores
@@ -31,10 +35,13 @@
 	// API
 	import {
 		createVersion,
+		checkoutHandoffLock,
+		releaseHandoffLock,
+		createRevision,
 		getUploadedScreenIds,
 		uploadScreen,
 		uploadTokens,
-		finalizeVersion,
+		finalizeRevision,
 	} from './lib/api';
 
 	// Views
@@ -109,9 +116,75 @@
 
 	// AbortController for cancellation
 	let publishAbort: AbortController | null = null;
+	let sketchUploadBusy = false;
 
 	/** Concurrency limit for parallel artboard processing */
 	const CONCURRENCY = 3;
+
+	async function prepareSketchUpload() {
+		const state = get(appState);
+		if (!state.selectedProjectId || !state.documentData) return;
+		if (!state.checkinNote.trim()) {
+			addToast('Check-in note is required before uploading Sketch file.', 'warning');
+			return;
+		}
+		if (sketchUploadBusy) return;
+
+		sketchUploadBusy = true;
+		try {
+			let versionId = state.selectedVersionId;
+			if (!versionId) {
+				addToast('Creating version…', 'info');
+				const version = await createVersion(state.serverUrl, state.selectedProjectId);
+				versionId = version.id;
+				updateState({
+					selectedVersionId: versionId,
+					projectVersions: [version, ...state.projectVersions],
+				});
+			}
+
+			const lock = await checkoutHandoffLock(state.serverUrl, state.selectedProjectId, {
+				versionId,
+			});
+			updateState({ handoffLock: lock });
+
+			const revision = await createRevision(state.serverUrl, state.selectedProjectId, versionId, {
+				note: state.checkinNote.trim(),
+			});
+
+			const artifact = await requestSketchFileUpload({
+				serverUrl: state.serverUrl,
+				authToken: state.authToken,
+				projectId: state.selectedProjectId,
+				versionId,
+				revisionId: revision.id,
+			});
+
+			const revisionWithArtifact = {
+				...revision,
+				sketchArtifactId: artifact?.id || revision.sketchArtifactId || null,
+				sketchArtifact: artifact || null,
+			};
+
+			updatePublish({
+				versionId,
+				revisionId: revision.id,
+			});
+			updateState({
+				selectedRevisionId: revision.id,
+				versionRevisions: [
+					revisionWithArtifact,
+					...state.versionRevisions.filter((r) => r.id !== revision.id),
+				],
+			});
+
+			addToast(`Sketch file uploaded to r${revision.revisionNumber}.`, 'success');
+		} catch (err: any) {
+			addToast(err.message || 'Failed to upload Sketch file.', 'error');
+		} finally {
+			sketchUploadBusy = false;
+		}
+	}
 
 	async function startPublish(isResume = false) {
 		const state = get(appState);
@@ -120,6 +193,19 @@
 		const selected = get(selectedArtboardIds);
 		if (selected.size === 0) {
 			addToast('Please select at least one artboard to publish.', 'warning');
+			return;
+		}
+
+		const activeVersionId = isResume ? get(publishState).versionId : state.selectedVersionId || get(publishState).versionId;
+		const activeRevisionId = isResume ? get(publishState).revisionId : state.selectedRevisionId || get(publishState).revisionId;
+		if (!activeVersionId || !activeRevisionId) {
+			addToast('Upload Sketch file first, then publish screens.', 'warning');
+			return;
+		}
+
+		const selectedRevision = state.versionRevisions.find((revision) => revision.id === activeRevisionId);
+		if (!isResume && selectedRevision && selectedRevision.status !== 'uploading') {
+			addToast('Selected revision is finalized. Upload a new Sketch file first.', 'warning');
 			return;
 		}
 
@@ -145,10 +231,12 @@
 
 		updatePublish({
 			isPublishing: true,
+			versionId: activeVersionId,
+			revisionId: activeRevisionId,
 			queue,
 			step: 'creating',
 			percent: 0,
-			detail: isResume ? 'Resuming…' : 'Creating version…',
+			detail: isResume ? 'Resuming…' : 'Preparing screen upload…',
 			error: null,
 			cancelled: false,
 		});
@@ -158,37 +246,24 @@
 
 		try {
 			let versionId = get(publishState).versionId;
+			let revisionId = get(publishState).revisionId;
 			let uploadedIds = new Set<string>();
 
-			// 1. Create version or reuse existing
-			const chosenVersionId = state.selectedVersionId;
+			updatePublish({ step: 'creating', detail: 'Validating lock…', percent: 2 });
+			await checkoutHandoffLock(state.serverUrl, state.selectedProjectId, {
+				versionId: versionId ?? undefined,
+				revisionId: revisionId ?? undefined,
+			});
 
-			if (chosenVersionId && !isResume) {
-				// User selected an existing version
-				versionId = chosenVersionId;
-				updatePublish({ versionId, detail: 'Using selected version…' });
+			if (!versionId || !revisionId) throw new Error('Missing prepared revision');
 
-				// Fetch uploaded screens to skip them (unless user checked them for overwrite)
-				const ids = await getUploadedScreenIds(state.serverUrl, state.selectedProjectId, versionId);
+			// Fetch uploaded screens to skip them (unless user checked them for overwrite)
+			updatePublish({ detail: 'Checking existing uploaded screens…', percent: 4 });
+			const ids = await getUploadedScreenIds(state.serverUrl, state.selectedProjectId, versionId);
+			uploadedIds = isResume ? new Set(ids) : new Set(ids.filter((id) => !selected.has(id)));
+			updatePublish({ uploadedIds });
 
-				// Only skip screens that are uploaded AND not selected by the user.
-				// If the user re-checked an uploaded screen, it means they want to overwrite it.
-				uploadedIds = new Set(ids.filter((id) => !selected.has(id)));
-				updatePublish({ uploadedIds });
-			} else if (!isResume || !versionId) {
-				updatePublish({ step: 'creating', detail: 'Creating version…' });
-				const version = await createVersion(state.serverUrl, state.selectedProjectId);
-				versionId = version.id;
-				updatePublish({ versionId });
-			} else {
-				// Resuming: check what's already uploaded
-				updatePublish({ detail: 'Checking previously uploaded screens…' });
-				const ids = await getUploadedScreenIds(state.serverUrl, state.selectedProjectId, versionId);
-				uploadedIds = new Set(ids);
-				updatePublish({ uploadedIds });
-			}
-
-			// 2. Upload artboards with concurrency
+			// 2) Upload artboards with concurrency
 			updatePublish({ step: 'screens' });
 			const toUpload = queue.filter((a) => !uploadedIds.has(a.id));
 			const skipped = queue.length - toUpload.length;
@@ -251,6 +326,7 @@
 							flows: artboardData.flows,
 							displayOrder: artboard.displayOrder,
 							isFlowHome: artboard.isFlowHome || false,
+							revisionId,
 						});
 
 						setQueueItemStatus(artboard.id, 'done');
@@ -279,7 +355,7 @@
 
 			if (publishAbort?.signal.aborted) return;
 
-			// 3. Upload design tokens
+			// 3) Upload design tokens
 			updatePublish({ step: 'tokens', percent: 92, detail: 'Uploading design tokens…' });
 			const includeTokens = true; // Could bind to checkbox
 			if (includeTokens && state.documentData.designTokens) {
@@ -298,9 +374,9 @@
 
 			if (publishAbort?.signal.aborted) return;
 
-			// 4. Finalize
+			// 4) Finalize revision
 			updatePublish({ step: 'finalizing', percent: 97, detail: 'Finalizing…' });
-			await finalizeVersion(state.serverUrl, state.selectedProjectId!, versionId!);
+			await finalizeRevision(state.serverUrl, state.selectedProjectId!, versionId!, revisionId);
 
 			// Success
 			updatePublish({ step: 'done', percent: 100, detail: 'Done!', isPublishing: false });
@@ -331,6 +407,10 @@
 	function handleCancel() {
 		if (publishAbort) {
 			publishAbort.abort();
+		}
+		const state = get(appState);
+		if (state.selectedProjectId) {
+			releaseHandoffLock(state.serverUrl, state.selectedProjectId).catch(() => {});
 		}
 		stopPublishTimer();
 		updatePublish({ cancelled: true, isPublishing: false });
@@ -435,6 +515,7 @@
 		{@const _selected = $selectedArtboardIds}
 		{@const _uploaded = $appState.alreadyUploadedIds}
 		{@const _versionId = $appState.selectedVersionId}
+		{@const _revisionId = $appState.selectedRevisionId || $publishState.revisionId}
 		{@const _newCount = _versionId
 			? [..._selected].filter((id) => !_uploaded.has(id)).length
 			: _selected.size}
@@ -442,22 +523,34 @@
 			? [..._selected].filter((id) => _uploaded.has(id)).length
 			: 0}
 		<div class="footer">
-			<Button
-				variant="primary"
-				block
-				on:click={() => startPublish()}
-				disabled={_selected.size === 0}
-			>
-				{#if !_versionId}
-					Publish ({_selected.size} artboard{_selected.size !== 1 ? 's' : ''})
-				{:else if _overwriteCount > 0 && _newCount > 0}
-					Publish ({_newCount} new, {_overwriteCount} overwrite)
-				{:else if _overwriteCount > 0}
-					Publish ({_overwriteCount} overwrite)
-				{:else}
-					Publish ({_newCount} new screen{_newCount !== 1 ? 's' : ''})
-				{/if}
-			</Button>
+			<div class="footer-actions">
+				<Button
+					variant="secondary"
+					block
+					on:click={() => prepareSketchUpload()}
+					disabled={sketchUploadBusy}
+				>
+					{sketchUploadBusy ? 'Uploading Sketch…' : '1) Upload Sketch File'}
+				</Button>
+				<Button
+					variant="primary"
+					block
+					on:click={() => startPublish()}
+					disabled={_selected.size === 0 || !_revisionId}
+				>
+					{#if !_revisionId}
+						2) Upload Screens (upload sketch first)
+					{:else if !_versionId}
+						2) Upload Screens ({_selected.size} artboard{_selected.size !== 1 ? 's' : ''})
+					{:else if _overwriteCount > 0 && _newCount > 0}
+						2) Upload Screens ({_newCount} new, {_overwriteCount} overwrite)
+					{:else if _overwriteCount > 0}
+						2) Upload Screens ({_overwriteCount} overwrite)
+					{:else}
+						2) Upload Screens ({_newCount} new screen{_newCount !== 1 ? 's' : ''})
+					{/if}
+				</Button>
+			</div>
 		</div>
 	{/if}
 
@@ -515,5 +608,11 @@
 		padding: 12px 16px;
 		border-top: 1px solid var(--border);
 		background: var(--bg);
+	}
+
+	.footer-actions {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 8px;
 	}
 </style>
