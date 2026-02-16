@@ -12,5 +12,10 @@ npm-debug.log
 # WebStorm
 .idea
 
+.vscode
+publish.md
+
+.env 
+.env.local
 # sketch
 # sketch-assets
