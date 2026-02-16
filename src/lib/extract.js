@@ -89,8 +89,8 @@ export function extractDocument() {
 		documentName: document.path
 			? decodeURIComponent(
 					String(document.path)
-						.split('/')
-						.pop()
+						.trim()
+						.replace('/', '_')
 						.replace(/\.sketch$/, ''),
 				)
 			: 'Untitled',
@@ -128,12 +128,13 @@ export function extractArtboardData(artboardId) {
  * Export a single artboard to PNG and return its base64 data.
  * Called per-artboard during upload so we don't hold everything in memory.
  * @param {string} artboardId
+ * @param {number|string} [scale=2]
  * @returns {string} data URI with base64 PNG
  */
 // Persistent temp directory for exports – avoids mkdir/rmdir churn per artboard
 const _exportBaseDir = String(NSTemporaryDirectory()) + 'Flow-exports/';
 
-export function exportArtboardImage(artboardId) {
+export function exportArtboardImage(artboardId, scale = 2) {
 	const document = sketch.Document.getSelectedDocument();
 	if (!document) throw new Error('No document open');
 
@@ -164,7 +165,7 @@ export function exportArtboardImage(artboardId) {
 
 	sketch.export(artboard, {
 		formats: 'png',
-		scales: '1',
+		scales: String(scale),
 		output: _exportBaseDir,
 		'save-for-web': true,
 		overwriting: true,

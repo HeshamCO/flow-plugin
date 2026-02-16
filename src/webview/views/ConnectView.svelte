@@ -2,6 +2,7 @@
 	import Button from '../components/Button.svelte';
 	import Input from '../components/Input.svelte';
 	import Alert from '../components/Alert.svelte';
+	import flowWelcomeIcon from '../../../assets/logo.png';
 	import { appState, updateState, navigateTo } from '../stores/state';
 	import { addToast } from '../stores/toast';
 	import { login, register, isValidUrl, checkServerHealth } from '../lib/api';
@@ -109,7 +110,9 @@
 
 <div class="connect-view">
 	<div class="welcome">
-		<div class="welcome-icon">🌉</div>
+		<div class="welcome-icon">
+			<img src={flowWelcomeIcon} alt="Flow Logo" width="48" height="48" />
+		</div>
 		<h2>Welcome to Flow</h2>
 		<p class="text-secondary">Connect to your Flow server to start publishing designs.</p>
 	</div>

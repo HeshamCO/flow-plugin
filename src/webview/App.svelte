@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { get } from 'svelte/store';
 	import './styles/variables.css';
+	import flowHeaderLogo from '../../assets/logo.png';
 
 	// Bridge
 	import { initBridge, initBridgeHandlers, pluginCall, onPluginMessage } from './lib/bridge';
@@ -82,7 +83,11 @@
 		// Handle settings updates
 		unsubscribers.push(
 			onPluginMessage('settingsSaved', (payload) => {
-				updateState({ serverUrl: payload.serverUrl });
+				updateState({
+					serverUrl: payload.serverUrl,
+					exportScale: payload.exportScale || 2,
+					ignoreSslErrors: !!payload.ignoreSslErrors,
+				});
 			}),
 		);
 
@@ -158,6 +163,7 @@
 				projectId: state.selectedProjectId,
 				versionId,
 				revisionId: revision.id,
+				ignoreSslErrors: state.ignoreSslErrors,
 			});
 
 			const revisionWithArtifact = {
@@ -454,20 +460,7 @@
 	<!-- Header -->
 	<div class="header">
 		<div class="header-title">
-			<svg
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				width="20"
-				height="20"
-			>
-				<path d="M3 7l6-4 6 4 6-4v14l-6 4-6-4-6 4z" />
-				<path d="M9 3v14" />
-				<path d="M15 7v14" />
-			</svg>
+			<img src={flowHeaderLogo} alt="Flow Logo" width="20" height="20" />
 			Flow
 		</div>
 		<div class="header-actions">
@@ -586,9 +579,7 @@
 		gap: 8px;
 	}
 
-	.header-title svg {
-		opacity: 0.7;
-	}
+	
 
 	.header-actions {
 		display: flex;

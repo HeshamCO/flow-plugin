@@ -15,11 +15,26 @@ const handlers = new Map<string, MessageHandler[]>();
  */
 export function pluginCall(handler: string, data?: string | object): void {
 	try {
-		const serialized = typeof data === 'string' ? data : JSON.stringify(data || '');
+		const serialized = typeof data === 'string' ? data : JSON.stringify(data ?? '');
 		(window as any).postMessage(handler, serialized);
 	} catch (e) {
 		console.error('[bridge] pluginCall error:', e);
 	}
+}
+
+/**
+ * Send a message and return the first plugin listener result.
+ */
+export async function pluginRequest<T = unknown>(
+	handler: string,
+	data?: string | object,
+): Promise<T> {
+	const serialized = typeof data === 'string' ? data : JSON.stringify(data ?? '');
+	const raw = await (window as any).postMessage(handler, serialized);
+	if (Array.isArray(raw)) {
+		return raw[0] as T;
+	}
+	return raw as T;
 }
 
 /**
@@ -142,6 +157,7 @@ export function requestSketchFileUpload(
 		projectId: string;
 		versionId: string;
 		revisionId: string;
+		ignoreSslErrors?: boolean;
 	},
 	timeoutMs = 10 * 60_000,
 ): Promise<any> {

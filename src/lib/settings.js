@@ -13,7 +13,23 @@ const KEYS = {
 	USER_NAME: 'Flow.userName',
 	LAST_PROJECT_ID: 'Flow.lastProjectId',
 	LAST_PUBLISH_TIME: 'Flow.lastPublishTime',
+	EXPORT_SCALE: 'Flow.exportScale',
+	IGNORE_SSL_ERRORS: 'Flow.ignoreSslErrors',
 };
+
+const DEFAULT_EXPORT_SCALE = 2;
+const MIN_EXPORT_SCALE = 1;
+const MAX_EXPORT_SCALE = 4;
+
+function normalizeExportScale(scale) {
+	const n = Number(scale);
+	if (!Number.isFinite(n)) return DEFAULT_EXPORT_SCALE;
+	const rounded = Math.round(n);
+	if (rounded < MIN_EXPORT_SCALE || rounded > MAX_EXPORT_SCALE) {
+		return DEFAULT_EXPORT_SCALE;
+	}
+	return rounded;
+}
 
 // ─── Server URL ──────────────────────────────────────────────────────
 
@@ -84,6 +100,28 @@ export function setLastPublishTime() {
 	Settings.setSettingForKey(KEYS.LAST_PUBLISH_TIME, new Date().toISOString());
 }
 
+// ─── Export / SSL Options ───────────────────────────────────────────
+
+/** @returns {number} */
+export function getExportScale() {
+	return normalizeExportScale(Settings.settingForKey(KEYS.EXPORT_SCALE));
+}
+
+/** @param {number|string} scale */
+export function setExportScale(scale) {
+	Settings.setSettingForKey(KEYS.EXPORT_SCALE, normalizeExportScale(scale));
+}
+
+/** @returns {boolean} */
+export function getIgnoreSslErrors() {
+	return !!Settings.settingForKey(KEYS.IGNORE_SSL_ERRORS);
+}
+
+/** @param {boolean} value */
+export function setIgnoreSslErrors(value) {
+	Settings.setSettingForKey(KEYS.IGNORE_SSL_ERRORS, !!value);
+}
+
 // ─── Convenience ─────────────────────────────────────────────────────
 
 /** @returns {PluginSettings} */
@@ -94,6 +132,8 @@ export function getAllSettings() {
 		userEmail: getUserEmail(),
 		userName: getUserName(),
 		lastProjectId: getLastProjectId(),
+		exportScale: getExportScale(),
+		ignoreSslErrors: getIgnoreSslErrors(),
 	};
 }
 

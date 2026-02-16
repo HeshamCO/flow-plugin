@@ -22,7 +22,8 @@
 	},
 	"include": [
 		"../../../flow-plugin/src/webview/**/*.ts",
-		"../../../flow-plugin/src/webview/**/*.svelte"
+		"../../../flow-plugin/src/webview/**/*.svelte",
+		"../../../flow-plugin/src/webview/**/*.d.ts"
 	],
 	"exclude": ["../../../flow-plugin/src/webview/node_modules"]
 }

@@ -12,6 +12,8 @@ export interface PluginSettings {
 	userEmail: string;
 	userName: string;
 	lastProjectId: string;
+	exportScale: number;
+	ignoreSslErrors: boolean;
 }
 
 // ─── Document Extraction ─────────────────────────────────────────────
@@ -333,9 +335,14 @@ export interface RevisionCompareResult {
 /** Messages sent from the WebView to the native plugin via postMessage */
 export type WebViewToPluginMessage =
 	| { handler: 'saveServerUrl'; data: string }
+	| {
+			handler: 'saveSettings';
+			data: { serverUrl: string; exportScale: number; ignoreSslErrors: boolean };
+	  }
 	| { handler: 'saveAuth'; data: string }
 	| { handler: 'logout'; data: '' }
 	| { handler: 'saveLastProject'; data: string }
+	| { handler: 'nativeApiRequest'; data: string }
 	| { handler: 'getSettings'; data: '' }
 	| { handler: 'extractDocument'; data: '' }
 	| { handler: 'exportArtboard'; data: string }
@@ -349,7 +356,7 @@ export type PluginToWebViewMessage =
 	| { type: 'init'; payload: { settings: PluginSettings; initialView: string | null } }
 	| { type: 'navigate'; payload: { view: string } }
 	| { type: 'settings'; payload: PluginSettings }
-	| { type: 'settingsSaved'; payload: { serverUrl: string } }
+	| { type: 'settingsSaved'; payload: PluginSettings }
 	| { type: 'authSaved'; payload: { email: string; name: string } }
 	| { type: 'loggedOut'; payload: Record<string, never> }
 	| { type: 'documentData'; payload: DocumentData }

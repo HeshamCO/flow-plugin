@@ -8,6 +8,8 @@
 	import { isValidUrl } from '../lib/api';
 
 	let serverUrl = $appState.serverUrl;
+	let exportScale = String($appState.exportScale || 2);
+	let ignoreSslErrors = !!$appState.ignoreSslErrors;
 	let alertMsg = '';
 	let alertType: 'success' | 'error' = 'success';
 
@@ -37,8 +39,23 @@
 			return;
 		}
 
-		updateState({ serverUrl: cleaned });
-		pluginCall('saveServerUrl', cleaned);
+		const parsedScale = Number(exportScale);
+		if (![1, 2, 3, 4].includes(parsedScale)) {
+			alertMsg = 'Export scale must be between 1x and 4x.';
+			alertType = 'error';
+			return;
+		}
+
+		updateState({
+			serverUrl: cleaned,
+			exportScale: parsedScale,
+			ignoreSslErrors,
+		});
+		pluginCall('saveSettings', {
+			serverUrl: cleaned,
+			exportScale: parsedScale,
+			ignoreSslErrors,
+		});
 		alertMsg = 'Settings saved.';
 		alertType = 'success';
 		setTimeout(() => (alertMsg = ''), 2000);
@@ -78,6 +95,25 @@
 	<Alert type={alertType} message={alertMsg} show={!!alertMsg} />
 
 	<Input label="Server URL" type="url" placeholder="http://localhost:4400" bind:value={serverUrl} />
+
+	<div class="form-group">
+		<label class="form-label" for="export-scale">Image Export Scale</label>
+		<select id="export-scale" class="form-select" bind:value={exportScale}>
+			<option value="1">1x (fastest)</option>
+			<option value="2">2x (balanced)</option>
+			<option value="3">3x (slower)</option>
+			<option value="4">4x (slowest)</option>
+		</select>
+		<p class="form-hint">Higher scale improves image quality but increases export time.</p>
+	</div>
+
+	<label class="checkbox-row">
+		<input type="checkbox" bind:checked={ignoreSslErrors} />
+		<span>Ignore invalid HTTPS certificates (self-signed)</span>
+	</label>
+	<p class="ssl-hint">
+		Use only for trusted internal servers. This disables certificate validation in plugin API calls.
+	</p>
 
 	<Button variant="primary" block on:click={saveSettings}>Save</Button>
 
@@ -141,6 +177,74 @@
 
 	.logout-action {
 		margin-top: 12px;
+	}
+
+	.form-group {
+		margin-bottom: 14px;
+	}
+
+	.form-label {
+		display: block;
+		font-size: 13px;
+		font-weight: 500;
+		color: var(--text);
+		margin-bottom: 6px;
+	}
+
+	.form-select {
+		width: 100%;
+		padding: 7px 10px;
+		border: 1px solid var(--input);
+		border-radius: var(--radius);
+		font-size: 12px;
+		font-family: var(--font);
+		color: var(--text);
+		background: transparent;
+		outline: none;
+		cursor: pointer;
+		transition:
+			border-color var(--transition),
+			box-shadow var(--transition);
+		-webkit-appearance: none;
+		appearance: none;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right 8px center;
+		padding-right: 28px;
+	}
+
+	.form-select:focus {
+		border-color: var(--ring);
+		box-shadow:
+			0 0 0 2px var(--bg),
+			0 0 0 4px var(--ring);
+	}
+
+	.form-hint {
+		font-size: 11px;
+		color: var(--text-muted);
+		margin-top: 4px;
+	}
+
+	.checkbox-row {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+		font-size: 12px;
+		color: var(--text);
+		margin-bottom: 4px;
+		cursor: pointer;
+		user-select: none;
+	}
+
+	.checkbox-row input {
+		margin-top: 2px;
+	}
+
+	.ssl-hint {
+		font-size: 11px;
+		color: var(--warning);
+		margin-bottom: 14px;
 	}
 
 	@keyframes fadeIn {

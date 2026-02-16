@@ -9,6 +9,7 @@
 import { get } from 'svelte/store';
 import { appState, resetAuth } from '../stores/state';
 import { addToast } from '../stores/toast';
+import { pluginRequest } from './bridge';
 import type {
 	AuthResponse,
 	Project,
@@ -20,10 +21,32 @@ import type {
 	RevisionCompareResult,
 } from '../../types/index';
 
+type ResponseLike = Pick<Response, 'ok' | 'status' | 'json' | 'text'>;
+
+type NativeApiResult = {
+	ok: boolean;
+	status: number;
+	bodyText: string;
+};
+
+function toResponseLike(result: NativeApiResult): ResponseLike {
+	const bodyText = result.bodyText || '';
+	return {
+		ok: !!result.ok,
+		status: Number(result.status) || 0,
+		json: async () => JSON.parse(bodyText || '{}'),
+		text: async () => bodyText,
+	};
+}
+
+function shouldUseNativeSslBypass(state: { ignoreSslErrors?: boolean }, url: string): boolean {
+	return !!state.ignoreSslErrors && /^https:\/\//i.test(url);
+}
+
 /**
  * Base fetch wrapper with auth and error handling.
  */
-export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+export async function apiFetch(url: string, options: RequestInit = {}): Promise<ResponseLike> {
 	const state = get(appState);
 	const headers: Record<string, string> = {
 		...((options.headers as Record<string, string>) || {}),
@@ -40,7 +63,28 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
 		headers['Authorization'] = `Bearer ${state.authToken}`;
 	}
 
-	const response = await fetch(url, { ...options, headers });
+	let response: ResponseLike;
+	if (shouldUseNativeSslBypass(state, url)) {
+		if (options.body instanceof FormData) {
+			throw new Error('FormData is not supported in native API mode for this request');
+		}
+		const body =
+			typeof options.body === 'string'
+				? options.body
+				: options.body == null
+					? ''
+					: String(options.body);
+		const native = await pluginRequest<NativeApiResult>('nativeApiRequest', {
+			url,
+			method,
+			headers,
+			body,
+			insecure: true,
+		});
+		response = toResponseLike(native);
+	} else {
+		response = await fetch(url, { ...options, headers });
+	}
 
 	// 401 interception: token expired or invalid
 	if (response.status === 401) {
@@ -320,11 +364,50 @@ export async function uploadScreen(
 		revisionId: screenData.revisionId,
 	};
 
+	const state = get(appState);
+	const screenUrl = `${serverUrl}/projects/${projectId}/versions/${versionId}/screens`;
+	if (shouldUseNativeSslBypass(state, screenUrl)) {
+		const headers: Record<string, string> = {};
+		if (state.authToken) {
+			headers['Authorization'] = `Bearer ${state.authToken}`;
+		}
+
+		const native = await pluginRequest<NativeApiResult>('nativeApiRequest', {
+			url: screenUrl,
+			method: 'POST',
+			headers,
+			insecure: true,
+			multipart: {
+				files: [
+					{
+						name: 'image',
+						filename: `${screenData.sketchId}.png`,
+						contentType: 'image/png',
+						base64: screenData.imageBase64,
+					},
+				],
+				fields: {
+					meta: JSON.stringify(meta),
+				},
+			},
+		});
+
+		if (!native.ok) {
+			let errorText = `${native.status}`;
+			try {
+				const parsed = JSON.parse(native.bodyText || '{}');
+				errorText = parsed.error || errorText;
+			} catch {}
+			throw new Error(`Failed to upload "${screenData.name}": ${errorText}`);
+		}
+		return;
+	}
+
 	const formData = new FormData();
 	formData.append('image', imageBlob, `${screenData.sketchId}.png`);
 	formData.append('meta', JSON.stringify(meta));
 
-	const res = await apiFetch(`${serverUrl}/projects/${projectId}/versions/${versionId}/screens`, {
+	const res = await apiFetch(screenUrl, {
 		method: 'POST',
 		headers: {}, // Let browser set Content-Type with boundary
 		body: formData,
@@ -365,10 +448,22 @@ export async function finalizeVersion(
 
 export async function checkServerHealth(serverUrl: string): Promise<boolean> {
 	try {
+		const state = get(appState);
+		const healthUrl = `${serverUrl}/health`;
+		if (shouldUseNativeSslBypass(state, healthUrl)) {
+			const native = await pluginRequest<NativeApiResult>('nativeApiRequest', {
+				url: healthUrl,
+				method: 'GET',
+				headers: {},
+				insecure: true,
+			});
+			return !!native.ok;
+		}
+
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), 5000);
 
-		const res = await fetch(`${serverUrl}/health`, {
+		const res = await fetch(healthUrl, {
 			signal: controller.signal,
 		}).catch(() => null);
 

@@ -9,7 +9,10 @@
 
 	function openInBrowser() {
 		// Use the server URL directly — don't rewrite the port
-		const url = `${$appState.serverUrl}/projects/${$appState.selectedProjectId}`;
+		// replace -api in the url base if it exists, to get the project page instead of the API the api flow-api.hir.sa and fe flow.hir.sa or any other name same setup
+		// not nusseary .hir.sa could be any domain
+		const baseUrl = $appState.serverUrl.replace(/-api/, '').replace('-server', '');
+		const url = `${baseUrl}/projects/${$appState.selectedProjectId}`;
 		pluginCall('openUrl', url);
 	}
 </script>

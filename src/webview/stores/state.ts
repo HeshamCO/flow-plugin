@@ -33,6 +33,8 @@ export interface AppState {
 	userEmail: string;
 	userName: string;
 	lastProjectId: string;
+	exportScale: number;
+	ignoreSslErrors: boolean;
 	authMode: 'login' | 'register';
 	projects: Project[];
 	selectedProjectId: string | null;
@@ -55,6 +57,8 @@ const defaultState: AppState = {
 	userEmail: '',
 	userName: '',
 	lastProjectId: '',
+	exportScale: 1,
+	ignoreSslErrors: false,
 	authMode: 'login',
 	projects: [],
 	selectedProjectId: null,
@@ -150,6 +154,8 @@ export function initFromSettings(settings: PluginSettings, initialView?: string 
 		userEmail: settings.userEmail || '',
 		userName: settings.userName || '',
 		lastProjectId: settings.lastProjectId || '',
+		exportScale: settings.exportScale || 2,
+		ignoreSslErrors: !!settings.ignoreSslErrors,
 	});
 
 	if (settings.serverUrl && settings.authToken) {
